@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributed Query Processing — Beginner to Advanced</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;600&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg: #020a14;
+    --bg2: #050f1e;
+    --accent: #00ffe7;
+    --accent2: #ff6b35;
+    --accent3: #a855f7;
+    --gold: #ffd700;
+    --text: #c8d8e8;
+    --dim: #4a6080;
+    --card: rgba(0,255,231,0.04);
+    --border: rgba(0,255,231,0.15);
+    --beginner: #22c55e;
+    --intermediate: #f59e0b;
+    --advanced: #ef4444;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  .cursor {
+    position: fixed; width:12px; height:12px;
+    background: var(--accent); border-radius:50%;
+    pointer-events:none; z-index:9999;
+    transform:translate(-50%,-50%);
+    transition: transform 0.1s, background 0.2s;
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    position:fixed; width:36px; height:36px;
+    border:1px solid var(--accent); border-radius:50%;
+    pointer-events:none; z-index:9998;
+    transform:translate(-50%,-50%);
+    transition: all 0.15s ease;
+    opacity:0.5;
+  }
+
+  /* CANVAS */
+  #canvas3d {
+    position:fixed; top:0; left:0;
+    width:100%; height:100%;
+    z-index:0;
+    pointer-events:none;
+  }
+
+  /* NAV */
+  nav {
+    position:fixed; top:0; left:0; right:0;
+    z-index:100;
+    background: rgba(2,10,20,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display:flex; align-items:center; justify-content:space-between;
+    height:60px;
+  }
+
+  .nav-logo {
+    font-family:'Orbitron',monospace;
+    font-size:0.8rem;
+    color: var(--accent);
+    letter-spacing:0.2em;
+    text-transform:uppercase;
+  }
+
+  .nav-links {
+    display:flex; gap:1.5rem;
+    list-style:none;
+  }
+
+  .nav-links a {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    color: var(--dim);
+    text-decoration:none;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    transition:color 0.2s;
+  }
+  .nav-links a:hover { color:var(--accent); }
+
+  /* MAIN */
+  main {
+    position:relative; z-index:1;
+    padding-top:60px;
+  }
+
+  /* HERO */
+  .hero {
+    min-height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center;
+    padding:2rem;
+    position:relative;
+  }
+
+  .hero-badge {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    color:var(--accent);
+    letter-spacing:0.3em;
+    text-transform:uppercase;
+    background: rgba(0,255,231,0.08);
+    border:1px solid var(--border);
+    padding:0.4rem 1.2rem;
+    border-radius:2rem;
+    margin-bottom:2rem;
+    animation: fadeIn 1s ease;
+  }
+
+  .hero h1 {
+    font-family:'Orbitron',monospace;
+    font-size:clamp(2.5rem,6vw,5rem);
+    font-weight:900;
+    line-height:1.1;
+    margin-bottom:1.5rem;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent3) 100%);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+    animation: slideUp 1s ease 0.2s both;
+  }
+
+  .hero-sub {
+    font-size:1.1rem;
+    color:var(--dim);
+    max-width:600px;
+    line-height:1.7;
+    animation: slideUp 1s ease 0.4s both;
+    margin-bottom:3rem;
+  }
+
+  .roadmap-pills {
+    display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;
+    animation: slideUp 1s ease 0.6s both;
+    margin-bottom:3rem;
+  }
+
+  .pill {
+    padding:0.5rem 1.5rem;
+    border-radius:2rem;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.75rem;
+    font-weight:600;
+    letter-spacing:0.1em;
+    cursor:pointer;
+    transition:all 0.3s;
+  }
+  .pill-beginner { background:rgba(34,197,94,0.15); border:1px solid var(--beginner); color:var(--beginner); }
+  .pill-intermediate { background:rgba(245,158,11,0.15); border:1px solid var(--intermediate); color:var(--intermediate); }
+  .pill-advanced { background:rgba(239,68,68,0.15); border:1px solid var(--advanced); color:var(--advanced); }
+  .pill:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(0,0,0,0.3); }
+
+  .scroll-hint {
+    animation: bounce 2s infinite;
+    color:var(--dim);
+    font-size:0.75rem;
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.2em;
+  }
+
+  /* SECTION */
+  section {
+    padding:5rem 2rem;
+    max-width:1200px;
+    margin:0 auto;
+    position:relative;
+  }
+
+  .section-label {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    letter-spacing:0.4em;
+    text-transform:uppercase;
+    margin-bottom:1rem;
+  }
+  .label-beginner { color:var(--beginner); }
+  .label-intermediate { color:var(--intermediate); }
+  .label-advanced { color:var(--advanced); }
+  .label-core { color:var(--accent); }
+
+  .section-title {
+    font-family:'Orbitron',monospace;
+    font-size:clamp(1.5rem,3vw,2.5rem);
+    font-weight:700;
+    margin-bottom:1rem;
+    color:#fff;
+  }
+
+  .section-desc {
+    color:var(--dim);
+    font-size:1rem;
+    line-height:1.7;
+    max-width:700px;
+    margin-bottom:3rem;
+  }
+
+  /* LEVEL INDICATOR */
+  .level-bar {
+    display:flex; align-items:center; gap:1rem;
+    margin-bottom:4rem;
+    overflow-x:auto;
+    padding-bottom:1rem;
+  }
+
+  .level-step {
+    display:flex; flex-direction:column; align-items:center;
+    gap:0.5rem; min-width:120px;
+    opacity:0.4;
+    transition:opacity 0.3s;
+  }
+  .level-step.active { opacity:1; }
+  .level-dot { width:16px; height:16px; border-radius:50%; border:2px solid; }
+  .level-line { height:2px; flex:1; min-width:40px; }
+  .level-step span { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; text-align:center; }
+
+  /* CARDS GRID */
+  .cards-grid {
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px,1fr));
+    gap:1.5rem;
+    margin-bottom:3rem;
+  }
+
+  .card {
+    background: var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:1.8rem;
+    position:relative;
+    overflow:hidden;
+    transition:all 0.4s cubic-bezier(0.23,1,0.32,1);
+  }
+
+  .card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity:0;
+    transition:opacity 0.3s;
+  }
+  .card:hover { transform:translateY(-6px); border-color:rgba(0,255,231,0.4); box-shadow:0 20px 60px rgba(0,0,0,0.4), 0 0 40px rgba(0,255,231,0.05); }
+  .card:hover::before { opacity:1; }
+
+  .card-icon { font-size:2rem; margin-bottom:1rem; }
+  .card-tag {
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.6rem;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    padding:0.2rem 0.7rem;
+    border-radius:1rem;
+    margin-bottom:0.8rem;
+  }
+  .tag-b { background:rgba(34,197,94,0.1); color:var(--beginner); border:1px solid rgba(34,197,94,0.3); }
+  .tag-i { background:rgba(245,158,11,0.1); color:var(--intermediate); border:1px solid rgba(245,158,11,0.3); }
+  .tag-a { background:rgba(239,68,68,0.1); color:var(--advanced); border:1px solid rgba(239,68,68,0.3); }
+  .tag-c { background:rgba(0,255,231,0.1); color:var(--accent); border:1px solid var(--border); }
+
+  .card h3 {
+    font-family:'Orbitron',monospace;
+    font-size:1rem;
+    font-weight:700;
+    color:#fff;
+    margin-bottom:0.8rem;
+    line-height:1.3;
+  }
+
+  .card p {
+    font-size:0.88rem;
+    color:var(--dim);
+    line-height:1.7;
+    margin-bottom:1rem;
+  }
+
+  .card-formula {
+    background:rgba(0,0,0,0.4);
+    border:1px solid rgba(0,255,231,0.1);
+    border-radius:8px;
+    padding:0.8rem 1rem;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.78rem;
+    color:var(--accent);
+    line-height:1.6;
+    overflow-x:auto;
+  }
+
+  /* COST TABLE */
+  .cost-table-wrap {
+    overflow-x:auto;
+    margin:2rem 0;
+    border-radius:12px;
+    border:1px solid var(--border);
+  }
+
+  table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.85rem;
+  }
+
+  thead { background:rgba(0,255,231,0.08); }
+  th {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--accent);
+    padding:1rem 1.2rem;
+    text-align:left;
+    border-bottom:1px solid var(--border);
+  }
+  td {
+    padding:0.9rem 1.2rem;
+    border-bottom:1px solid rgba(0,255,231,0.05);
+    color:var(--text);
+    vertical-align:top;
+  }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(0,255,231,0.03); }
+  .cost-val { font-family:'IBM Plex Mono',monospace; color:var(--accent2); font-weight:600; }
+  .cost-win { color:var(--beginner); font-weight:600; }
+
+  /* VISUAL DIAGRAMS */
+  .diagram-box {
+    background:rgba(0,0,0,0.5);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:2rem;
+    margin:2rem 0;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.8rem;
+    line-height:2;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .diagram-box::after {
+    content:'';
+    position:absolute;
+    top:-50%; left:-50%; width:200%; height:200%;
+    background: radial-gradient(ellipse at center, rgba(0,255,231,0.03) 0%, transparent 70%);
+    pointer-events:none;
+  }
+
+  .d-site { color:var(--gold); font-weight:600; }
+  .d-op { color:var(--accent); }
+  .d-rel { color:var(--accent2); }
+  .d-result { color:var(--beginner); }
+  .d-arrow { color:var(--dim); }
+  .d-comment { color:var(--dim); font-style:italic; }
+
+  /* LAYERS VISUAL */
+  .layers-visual {
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    max-width:700px;
+    margin:2rem auto;
+  }
+
+  .layer {
+    padding:1.2rem 2rem;
+    border:1px solid var(--border);
+    position:relative;
+    transition:all 0.3s;
+    cursor:default;
+  }
+  .layer:first-child { border-radius:12px 12px 0 0; }
+  .layer:last-child { border-radius:0 0 12px 12px; }
+  .layer:not(:last-child) { border-bottom:none; }
+  .layer:hover { background:rgba(0,255,231,0.05); transform:scaleX(1.01); }
+
+  .layer-num {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.6rem;
+    color:var(--dim);
+    letter-spacing:0.2em;
+    margin-bottom:0.3rem;
+  }
+  .layer-name {
+    font-family:'Orbitron',monospace;
+    font-size:0.9rem;
+    font-weight:700;
+    color:#fff;
+  }
+  .layer-input {
+    font-size:0.78rem;
+    color:var(--dim);
+    margin-top:0.3rem;
+  }
+  .layer-arrow {
+    text-align:center;
+    color:var(--accent);
+    font-size:1.2rem;
+    padding:0.3rem 0;
+    opacity:0.5;
+  }
+
+  /* ACCORDION */
+  .accordion { margin:1rem 0; }
+  .accordion-item {
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:0.8rem;
+    overflow:hidden;
+    transition:border-color 0.3s;
+  }
+  .accordion-item:hover { border-color:rgba(0,255,231,0.3); }
+  .accordion-item.open { border-color:var(--accent); }
+
+  .accordion-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1rem 1.5rem;
+    cursor:pointer;
+    background:rgba(0,0,0,0.3);
+  }
+  .accordion-header h4 {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.85rem;
+    color:#fff;
+    display:flex; align-items:center; gap:1rem;
+  }
+  .accordion-toggle {
+    color:var(--accent);
+    font-size:1.2rem;
+    font-weight:300;
+    transition:transform 0.3s;
+  }
+  .accordion-item.open .accordion-toggle { transform:rotate(45deg); }
+  .accordion-body {
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.4s ease;
+    background:rgba(0,0,0,0.2);
+  }
+  .accordion-item.open .accordion-body { max-height:600px; }
+  .accordion-body-inner {
+    padding:1.2rem 1.5rem;
+    font-size:0.85rem;
+    color:var(--dim);
+    line-height:1.8;
+  }
+  .accordion-body-inner strong { color:var(--text); }
+  .accordion-body-inner code {
+    font-family:'IBM Plex Mono',monospace;
+    background:rgba(0,255,231,0.08);
+    color:var(--accent);
+    padding:0.1em 0.4em;
+    border-radius:4px;
+    font-size:0.9em;
+  }
+
+  /* COMPLEXITY TABLE */
+  .complexity-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+    gap:1rem;
+    margin:2rem 0;
+  }
+  .complexity-card {
+    background:rgba(0,0,0,0.4);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:1rem;
+    text-align:center;
+  }
+  .complexity-op {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:1rem;
+    color:var(--accent);
+    margin-bottom:0.5rem;
+  }
+  .complexity-label { font-size:0.75rem; color:var(--dim); margin-bottom:0.3rem; }
+  .complexity-val {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.8rem;
+    font-weight:600;
+    padding:0.3rem 0.6rem;
+    border-radius:4px;
+    display:inline-block;
+    margin:0.2rem;
+  }
+  .cv-low { background:rgba(34,197,94,0.15); color:var(--beginner); }
+  .cv-med { background:rgba(245,158,11,0.15); color:var(--intermediate); }
+  .cv-high { background:rgba(239,68,68,0.15); color:var(--advanced); }
+
+  /* SQL BLOCK */
+  .sql-block {
+    background:rgba(0,0,0,0.6);
+    border:1px solid rgba(0,255,231,0.2);
+    border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;
+    padding:1.2rem 1.5rem;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.82rem;
+    line-height:1.7;
+    margin:1rem 0;
+    overflow-x:auto;
+  }
+  .kw { color:#a855f7; font-weight:600; }
+  .str { color:var(--accent2); }
+  .cmt { color:var(--dim); font-style:italic; }
+  .attr { color:var(--accent); }
+
+  /* ROADMAP TIMELINE */
+  .roadmap-timeline {
+    position:relative;
+    padding-left:3rem;
+    margin:2rem 0;
+  }
+  .roadmap-timeline::before {
+    content:'';
+    position:absolute; left:0; top:0; bottom:0;
+    width:2px;
+    background: linear-gradient(to bottom, var(--beginner), var(--intermediate), var(--advanced));
+  }
+
+  .timeline-item {
+    position:relative;
+    margin-bottom:2.5rem;
+    padding-left:1rem;
+  }
+  .timeline-dot {
+    position:absolute; left:-2.5rem; top:0.5rem;
+    width:16px; height:16px; border-radius:50%;
+    border:2px solid;
+    background:var(--bg);
+  }
+  .timeline-item h3 {
+    font-family:'Orbitron',monospace;
+    font-size:0.9rem;
+    color:#fff;
+    margin-bottom:0.5rem;
+  }
+  .timeline-item p { font-size:0.85rem; color:var(--dim); line-height:1.7; }
+
+  /* OPTIMIZER STRATEGY */
+  .strategy-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1.5rem;
+    margin:2rem 0;
+  }
+  @media(max-width:600px) { .strategy-grid { grid-template-columns:1fr; } }
+  .strategy-card {
+    background:rgba(0,0,0,0.4);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:1.5rem;
+  }
+  .strategy-card h4 {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.8rem;
+    letter-spacing:0.1em;
+    color:var(--accent);
+    margin-bottom:0.8rem;
+    text-transform:uppercase;
+  }
+  .strategy-card p { font-size:0.83rem; color:var(--dim); line-height:1.7; }
+  .pro { color:var(--beginner); font-weight:600; }
+  .con { color:var(--advanced); font-weight:600; }
+
+  /* DIVIDER */
+  .divider {
+    border:none;
+    border-top:1px solid var(--border);
+    margin:3rem 0;
+    position:relative;
+  }
+  .divider::after {
+    content:attr(data-text);
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    background:var(--bg);
+    padding:0 1rem;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.65rem;
+    letter-spacing:0.3em;
+    color:var(--dim);
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+
+  /* QUIZ BOX */
+  .quiz-section {
+    background:rgba(168,85,247,0.05);
+    border:1px solid rgba(168,85,247,0.2);
+    border-radius:16px;
+    padding:2.5rem;
+    margin:3rem 0;
+  }
+  .quiz-section h3 {
+    font-family:'Orbitron',monospace;
+    font-size:1.1rem;
+    color:var(--accent3);
+    margin-bottom:1.5rem;
+  }
+  .quiz-q { margin-bottom:1.5rem; }
+  .quiz-q p { font-size:0.9rem; color:var(--text); margin-bottom:0.8rem; font-weight:600; }
+  .quiz-options { display:flex; flex-wrap:wrap; gap:0.6rem; }
+  .quiz-opt {
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.75rem;
+    padding:0.4rem 1rem;
+    border:1px solid var(--border);
+    border-radius:2rem;
+    background:transparent;
+    color:var(--dim);
+    cursor:pointer;
+    transition:all 0.2s;
+  }
+  .quiz-opt:hover { border-color:var(--accent3); color:var(--accent3); }
+  .quiz-opt.correct { border-color:var(--beginner); background:rgba(34,197,94,0.15); color:var(--beginner); }
+  .quiz-opt.wrong { border-color:var(--advanced); background:rgba(239,68,68,0.15); color:var(--advanced); }
+
+  /* FOOTER */
+  footer {
+    position:relative; z-index:1;
+    text-align:center;
+    padding:3rem 2rem;
+    border-top:1px solid var(--border);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.72rem;
+    color:var(--dim);
+    letter-spacing:0.1em;
+  }
+  footer span { color:var(--accent); }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
+  @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(0,255,231,0.1)} 50%{box-shadow:0 0 40px rgba(0,255,231,0.3)} }
+  @keyframes scanline {
+    from { transform:translateY(-100%); }
+    to   { transform:translateY(100vh); }
+  }
+
+  .scanline {
+    position:fixed; top:0; left:0; right:0;
+    height:2px;
+    background:linear-gradient(to right, transparent, rgba(0,255,231,0.15), transparent);
+    pointer-events:none; z-index:50;
+    animation: scanline 6s linear infinite;
+  }
+
+  /* REVEAL */
+  .reveal {
+    opacity:0;
+    transform:translateY(40px);
+    transition:all 0.7s cubic-bezier(0.23,1,0.32,1);
+  }
+  .reveal.visible { opacity:1; transform:none; }
+
+  /* HIGHLIGHT BOX */
+  .highlight-box {
+    background:rgba(0,255,231,0.04);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:1.2rem 1.5rem;
+    margin:1.5rem 0;
+    font-size:0.88rem;
+    line-height:1.7;
+    color:var(--text);
+  }
+  .highlight-box strong { color:var(--accent); }
+
+  /* HEURISTICS LIST */
+  .heuristic-list { list-style:none; }
+  .heuristic-list li {
+    padding:0.6rem 0;
+    border-bottom:1px solid rgba(0,255,231,0.05);
+    font-size:0.87rem;
+    color:var(--dim);
+    display:flex; gap:1rem; align-items:flex-start;
+  }
+  .heuristic-list li:last-child { border-bottom:none; }
+  .heuristic-list li::before {
+    content:attr(data-n);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.7rem;
+    color:var(--accent);
+    min-width:24px;
+    margin-top:2px;
+  }
+  .heuristic-list li strong { color:var(--text); }
+
+  /* PROGRESS */
+  .progress-track {
+    position:fixed; top:60px; left:0; right:0;
+    height:3px; z-index:99;
+  }
+  .progress-bar {
+    height:100%;
+    background:linear-gradient(90deg, var(--beginner), var(--intermediate), var(--advanced));
+    width:0%;
+    transition:width 0.2s;
+  }
+
+  /* SCROLL TO TOP */
+  .scroll-top {
+    position:fixed; bottom:2rem; right:2rem;
+    width:44px; height:44px;
+    background:rgba(0,255,231,0.1);
+    border:1px solid var(--border);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:200;
+    color:var(--accent); font-size:1.2rem;
+    transition:all 0.3s;
+    opacity:0;
+  }
+  .scroll-top.visible { opacity:1; }
+  .scroll-top:hover { background:rgba(0,255,231,0.2); transform:translateY(-3px); }
+
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+<div class="scanline"></div>
+<div class="progress-track"><div class="progress-bar" id="progress"></div></div>
+<canvas id="canvas3d"></canvas>
+
+<nav>
+  <div class="nav-logo">⬡ DQP Roadmap</div>
+  <ul class="nav-links">
+    <li><a href="#beginner">Beginner</a></li>
+    <li><a href="#intermediate">Intermediate</a></li>
+    <li><a href="#advanced">Advanced</a></li>
+    <li><a href="#calculator">Calculator</a></li>
+    <li><a href="#cheatsheet">Cheatsheet</a></li>
+    <li><a href="#quiz">Quiz</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">📡 Complete Learning Roadmap</div>
+    <h1>Distributed Query<br>Processing</h1>
+    <p class="hero-sub">From SQL basics to cost-optimized distributed execution plans — a structured journey through query decomposition, data localization, and global optimization.</p>
+    <div class="roadmap-pills">
+      <a href="#beginner" class="pill pill-beginner">🟢 Beginner</a>
+      <a href="#intermediate" class="pill pill-intermediate">🟡 Intermediate</a>
+      <a href="#advanced" class="pill pill-advanced">🔴 Advanced</a>
+    </div>
+    <div class="scroll-hint">↓ scroll to begin</div>
+  </section>
+
+  <!-- OVERVIEW -->
+  <section id="overview" class="reveal">
+    <div class="section-label label-core">// Foundation</div>
+    <h2 class="section-title">What is Query Processing?</h2>
+    <p class="section-desc">Query processing is the bridge between what you ask (high-level declarative SQL) and how the database actually retrieves data (low-level procedural operations).</p>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🗣️</div>
+        <span class="card-tag tag-b">beginner</span>
+        <h3>Query Language</h3>
+        <p>SQL is a <strong>tuple calculus</strong> language. Users write <em>what</em> they want — the processor figures out <em>how</em> to get it.</p>
+        <div class="card-formula">
+Tuple Calculus:  { t | F(t) }
+Where t = tuple variable
+      F(t) = well-formed formula
+
+Domain Calculus:
+{ x,y | EMP(x,y,"Manager") }
+→ position-sensitive variables
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <span class="card-tag tag-b">beginner</span>
+        <h3>Query Processor Role</h3>
+        <p>Transforms declarative queries into optimal procedural operations. Handles <strong>three core jobs</strong>:</p>
+        <div class="card-formula">
+1. Query Language Support (SQL)
+2. Execution Methodology
+   → parsing → planning → running
+3. Query Optimization
+   → find the "best" plan
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <span class="card-tag tag-i">intermediate</span>
+        <h3>Distributed Extra Challenges</h3>
+        <p>When data lives on multiple sites, the processor must also handle:</p>
+        <div class="card-formula">
++ Query Decomposition
+  → break query into sub-queries
++ Data Localization
+  → find which site has which data
++ Communication Cost Optimization
+  → minimize network traffic
+        </div>
+      </div>
+    </div>
+
+    <!-- Processing Layers -->
+    <div class="section-label label-core" style="margin-top:3rem">// Architecture</div>
+    <h3 style="font-family:'Orbitron',monospace;font-size:1.3rem;color:#fff;margin-bottom:2rem">4 Layers of Query Processing</h3>
+
+    <div class="layers-visual">
+      <div class="layer" style="background:rgba(168,85,247,0.08);border-color:rgba(168,85,247,0.3)">
+        <div class="layer-num">LAYER 1</div>
+        <div class="layer-name">Query Decomposition</div>
+        <div class="layer-input">Input: Calculus Query on Distributed Relations → Output: Algebra Query on Distributed Relations</div>
+      </div>
+      <div class="layer-arrow">↓</div>
+      <div class="layer" style="background:rgba(0,255,231,0.04)">
+        <div class="layer-num">LAYER 2</div>
+        <div class="layer-name">Data Localization</div>
+        <div class="layer-input">Input: Algebra Query on Distributed Relations → Output: Fragment Query</div>
+      </div>
+      <div class="layer-arrow">↓</div>
+      <div class="layer" style="background:rgba(245,158,11,0.06);border-color:rgba(245,158,11,0.2)">
+        <div class="layer-num">LAYER 3</div>
+        <div class="layer-name">Global Optimization</div>
+        <div class="layer-input">Input: Fragment Query + Statistics → Output: Optimized Fragment Query with Communication Ops</div>
+      </div>
+      <div class="layer-arrow">↓</div>
+      <div class="layer" style="background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.2)">
+        <div class="layer-num">LAYER 4</div>
+        <div class="layer-name">Local Optimization</div>
+        <div class="layer-input">Input: Optimized Fragment Query + Local Schema → Output: Optimized Local Queries</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" data-text="beginner zone starts">
+
+  <!-- BEGINNER -->
+  <section id="beginner" class="reveal">
+    <div class="section-label label-beginner">// Level 01</div>
+    <h2 class="section-title">🟢 Beginner</h2>
+    <p class="section-desc">Master the fundamentals: centralized vs distributed query processing, basic optimization, and the cost problem.</p>
+
+    <!-- Centralized vs Distributed -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin-bottom:1.5rem;letter-spacing:0.1em">CENTRALIZED vs DISTRIBUTED PLANS</h3>
+
+    <div class="highlight-box">
+      <strong>Example Query:</strong><br>
+      <code style="background:none;color:var(--text)">SELECT ENAME FROM EMP E, ASG G WHERE E.ENO = G.ENO AND TITLE = "manager"</code><br><br>
+      Relations EMP and ASG are <strong>fragmented across multiple sites</strong>. The processor must choose how to execute this.
+    </div>
+
+    <div class="strategy-grid">
+      <div class="strategy-card">
+        <h4>📦 Plan I — Brute Force</h4>
+        <p>Transport <span class="con">ALL fragments</span> to one query site, execute everything there. Simple to implement but causes massive network traffic.</p>
+        <div class="card-formula" style="margin-top:1rem">
+Result = (EMP1 ∪ EMP2)
+       ⋈ENO
+       σTITLE="manager"(ASG1 ∪ ASG2)
+[All data → Site 5 → join]
+        </div>
+        <br>
+        <p><span class="con">Total Cost: 23,000 units</span> 💀</p>
+      </div>
+      <div class="strategy-card">
+        <h4>⚡ Plan II — Optimized</h4>
+        <p>Apply <span class="pro">selection first</span> at local sites, transfer only matching tuples, then join small results at query site.</p>
+        <div class="card-formula" style="margin-top:1rem">
+ASG1' = σTITLE="manager"(ASG1)
+ASG2' = σTITLE="manager"(ASG2)
+EMP1' = EMP1 ⋈ENO ASG1'
+EMP2' = EMP2 ⋈ENO ASG2'
+Result = (EMP1' ∪ EMP2')
+        </div>
+        <br>
+        <p><span class="pro">Total Cost: 460 units</span> ✅</p>
+      </div>
+    </div>
+
+    <!-- Cost Breakdown Table -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">COST BREAKDOWN — ASSUMPTIONS</h3>
+    <div class="highlight-box">
+      <strong>Given:</strong> size(EMP)=400, size(ASG)=1000, 20 tuples with TITLE="manager"<br>
+      <strong>Costs:</strong> tuple access = 1 unit · tuple transfer = 10 units<br>
+      <strong>Clustering:</strong> ASG clustered on TITLE, EMP clustered on ENO
+    </div>
+
+    <div class="cost-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>Plan I</th>
+            <th>Plan II</th>
+            <th>Winner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Transfer EMP to query site</td>
+            <td class="cost-val">400 × 10 = 4,000</td>
+            <td class="cost-val">—</td>
+            <td class="cost-win">Plan II</td>
+          </tr>
+          <tr>
+            <td>Transfer ASG to query site</td>
+            <td class="cost-val">1000 × 10 = 10,000</td>
+            <td class="cost-val">—</td>
+            <td class="cost-win">Plan II</td>
+          </tr>
+          <tr>
+            <td>Produce ASG' (selection)</td>
+            <td class="cost-val">1000 × 1 = 1,000</td>
+            <td class="cost-val">(10+10) × 1 = 20</td>
+            <td class="cost-win">Plan II</td>
+          </tr>
+          <tr>
+            <td>Join EMP and ASG'</td>
+            <td class="cost-val">400 × 20 × 1 = 8,000</td>
+            <td class="cost-val">(10+10) × 1 × 2 = 40</td>
+            <td class="cost-win">Plan II</td>
+          </tr>
+          <tr>
+            <td>Transfer ASG' to EMP sites</td>
+            <td class="cost-val">—</td>
+            <td class="cost-val">(10+10) × 10 = 200</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Transfer EMP' to result site</td>
+            <td class="cost-val">—</td>
+            <td class="cost-val">(10+10) × 10 = 200</td>
+            <td>—</td>
+          </tr>
+          <tr style="background:rgba(0,0,0,0.3)">
+            <td><strong>TOTAL</strong></td>
+            <td style="color:var(--advanced);font-weight:700;font-family:'IBM Plex Mono',monospace">23,000</td>
+            <td style="color:var(--beginner);font-weight:700;font-family:'IBM Plex Mono',monospace">460</td>
+            <td class="cost-win">Plan II — 50× faster!</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Network Types -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">NETWORK TOPOLOGY IMPACT</h3>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🌍</div>
+        <span class="card-tag tag-b">WAN</span>
+        <h3>Wide Area Network</h3>
+        <p>Communication cost <strong>dominates everything</strong>. Low bandwidth + high protocol overhead. Algorithm goal: minimize data transfer at all costs.</p>
+        <div class="card-formula">
+Optimize for: min(communication cost)
+Ignore: CPU cost, I/O cost
+Use: global schedule → minimize transfer
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏢</div>
+        <span class="card-tag tag-b">LAN</span>
+        <h3>Local Area Network</h3>
+        <p>Communication cost less dominant. Consider <strong>total cost function</strong>. Broadcasting can be exploited. Special star-network algorithms available.</p>
+        <div class="card-formula">
+Optimize for: min(I/O + CPU + comm)
+Exploit: broadcast capabilities
+Use: total cost function
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" data-text="intermediate zone starts">
+
+  <!-- INTERMEDIATE: QUERY DECOMPOSITION -->
+  <section id="intermediate" class="reveal">
+    <div class="section-label label-intermediate">// Level 02</div>
+    <h2 class="section-title">🟡 Intermediate</h2>
+    <p class="section-desc">Deep dive into Step 1: Query Decomposition — from calculus query to optimized relational algebra.</p>
+
+    <div class="roadmap-timeline">
+      <div class="timeline-item">
+        <div class="timeline-dot" style="border-color:var(--beginner);"></div>
+        <span class="card-tag tag-b" style="margin-bottom:0.5rem;display:inline-block">Step 1</span>
+        <h3>Normalization</h3>
+        <p>Convert query to CNF or DNF. Lexical + syntactic analysis. Type checking on qualifications. Maps OR → union, AND → join/selection.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="border-color:var(--intermediate);"></div>
+        <span class="card-tag tag-i" style="margin-bottom:0.5rem;display:inline-block">Step 2</span>
+        <h3>Analysis</h3>
+        <p>Reject type-incorrect or semantically incorrect queries. Use query graph — if NOT connected, query is semantically incorrect.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="border-color:var(--intermediate);"></div>
+        <span class="card-tag tag-i" style="margin-bottom:0.5rem;display:inline-block">Step 3</span>
+        <h3>Simplification</h3>
+        <p>Eliminate redundant predicates using idempotency rules. Reduce complex boolean expressions to minimal form.</p>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="border-color:var(--advanced);"></div>
+        <span class="card-tag tag-a" style="margin-bottom:0.5rem;display:inline-block">Step 4</span>
+        <h3>Restructuring</h3>
+        <p>Translate calculus query to optimal relational algebra. Build query tree. Apply transformation rules to improve performance.</p>
+      </div>
+    </div>
+
+    <!-- Normalization Detail -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">CNF vs DNF FORMS</h3>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">∧</div>
+        <span class="card-tag tag-b">CNF</span>
+        <h3>Conjunctive Normal Form</h3>
+        <p>AND of clauses, each clause is OR of predicates.</p>
+        <div class="card-formula">
+(p11 ∨ p12 ∨ ... ∨ p1n)
+∧ ...
+∧ (pm1 ∨ pm2 ∨ ... ∨ pmn)
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">∨</div>
+        <span class="card-tag tag-b">DNF</span>
+        <h3>Disjunctive Normal Form</h3>
+        <p>OR of clauses, each clause is AND of predicates.</p>
+        <div class="card-formula">
+(p11 ∧ p12 ∧ ... ∧ p1n)
+∨ ...
+∨ (pm1 ∧ pm2 ∧ ... ∧ pmn)
+        </div>
+      </div>
+    </div>
+
+    <!-- CNF Example -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">NORMALIZATION EXAMPLE</h3>
+    <div class="sql-block">
+<span class="kw">SELECT</span> <span class="attr">ENAME</span>
+<span class="kw">FROM</span>   EMP, ASG
+<span class="kw">WHERE</span>  EMP.ENO = ASG.ENO
+<span class="kw">AND</span>    ASG.JNO = <span class="str">"J1"</span>
+<span class="kw">AND</span>   (DUR = <span class="str">12</span> <span class="kw">OR</span> DUR = <span class="str">24</span>)
+    </div>
+    <div class="diagram-box">
+      <div><span class="d-comment">→ CNF form:</span></div>
+      <div><span class="d-op">(EMP.ENO = ASG.ENO)</span> <span class="d-arrow">∧</span></div>
+      <div><span class="d-op">(ASG.JNO = "J1")</span> <span class="d-arrow">∧</span></div>
+      <div><span class="d-op">(DUR = 12 ∨ DUR = 24)</span></div>
+    </div>
+
+    <!-- Analysis & Query Graph -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">ANALYSIS — QUERY GRAPH</h3>
+    <div class="highlight-box">
+      <strong>Rule:</strong> A conjunctive query (no negation) is <strong>semantically incorrect</strong> if its query graph is <strong>NOT connected</strong>.<br><br>
+      Query graph has: one node per relation + edges for joins and projections. All nodes must be reachable from the result node.
+    </div>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <span class="card-tag tag-b">Type Incorrect</span>
+        <h3>Type Error Examples</h3>
+        <div class="sql-block">
+<span class="cmt">-- Undefined attribute:</span>
+<span class="kw">SELECT</span> <span class="attr">E#</span> <span class="kw">FROM</span> EMP  <span class="cmt">-- E# doesn't exist</span>
+
+<span class="cmt">-- Type mismatch:</span>
+<span class="kw">WHERE</span> <span class="attr">ENAME</span> > <span class="str">200</span>  <span class="cmt">-- string > number</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🕸️</div>
+        <span class="card-tag tag-i">Semantically Incorrect</span>
+        <h3>Disconnected Query Graph</h3>
+        <p>If you have 3 relations but no join condition links them all — some relation floats disconnected → the query produces meaningless Cartesian product.</p>
+        <div class="card-formula">
+EMP ──⋈──  ASG   PROJ (isolated!)
+           ↑
+           connected
+           ↑
+     PROJ must also connect here
+        </div>
+      </div>
+    </div>
+
+    <!-- Simplification -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">SIMPLIFICATION EXAMPLE</h3>
+    <div class="highlight-box">
+      <strong>Complex query with redundant predicates:</strong>
+    </div>
+    <div class="sql-block">
+<span class="kw">SELECT</span> TITLE <span class="kw">FROM</span> EMP
+<span class="kw">WHERE</span> (<span class="kw">NOT</span>(TITLE=<span class="str">"Programmer"</span>)
+    <span class="kw">AND</span> (TITLE=<span class="str">"Programmer"</span> <span class="kw">OR</span> TITLE=<span class="str">"Electrical Eng."</span>)
+    <span class="kw">AND</span> <span class="kw">NOT</span>(TITLE=<span class="str">"Electrical Eng."</span>))
+   <span class="kw">OR</span> ENAME=<span class="str">"J.Doe"</span>
+    </div>
+    <div class="diagram-box">
+      <div><span class="d-comment">-- DNF Simplification:</span></div>
+      <div>p1 = TITLE="Programmer", p2 = TITLE="Elec.Engr", p3 = ENAME="J.Doe"</div>
+      <div>&nbsp;</div>
+      <div><span class="d-op">(¬p1 ∧ p1 ∧ ¬p2) ∨ (¬p1 ∧ p2 ∧ ¬p2) ∨ p3</span></div>
+      <div><span class="d-arrow">→</span> <span class="d-op">(false ∧ ¬p2) ∨ (¬p1 ∧ false) ∨ p3</span></div>
+      <div><span class="d-arrow">→</span> <span class="d-op">false ∨ false ∨ p3</span></div>
+      <div><span class="d-arrow">→</span> <span class="d-result">p3  (ENAME = "J.Doe")</span></div>
+      <div>&nbsp;</div>
+      <div><span class="d-comment">-- Simplified query:</span></div>
+      <div><span class="d-op">SELECT TITLE FROM EMP WHERE ENAME = "J.Doe"</span></div>
+    </div>
+
+    <!-- Transformation Rules -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">RESTRUCTURING — TRANSFORMATION RULES</h3>
+    <div class="accordion">
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>⟺ Commutativity of Binary Operations</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Joins and Unions can swap order:</strong><br>
+            <code>R × S ⟺ S × R</code><br>
+            <code>R ∪ S ⟺ S ∪ R</code><br>
+            <code>R ⋈ S ⟺ S ⋈ R</code><br><br>
+            Use this to put the <strong>smaller relation first</strong> in joins — reduces intermediate result size.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>⟺ Associativity of Binary Operations</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Reorder joins freely:</strong><br>
+            <code>(R × S) × T ⟺ R × (S × T)</code><br>
+            <code>(R ⋈ S) ⋈ T ⟺ R ⋈ (S ⋈ T)</code><br><br>
+            Use this to find the <strong>join order that minimizes intermediate sizes</strong>.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>⟺ Idempotence of Unary Operations</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Group multiple projections:</strong><br>
+            <code>Π_A'(Π_A''(R)) ⟺ Π_A'(R)  [if A' ⊆ A'']</code><br><br>
+            <strong>Group multiple selections:</strong><br>
+            <code>σ_p1(σ_p2(R)) ⟺ σ_p1∧p2(R)</code><br><br>
+            Access relation once instead of multiple times!
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>⟺ Commuting Selection with Binary Ops</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Push selections down the tree (most important optimization!):</strong><br>
+            <code>σ_p(Ai)(R × S) ⟺ (σ_p(Ai)(R)) × S</code><br>
+            <code>σ_p(Ai)(R ⋈ S) ⟺ (σ_p(Ai)(R)) ⋈ S</code><br>
+            <code>σ_p(Ai)(R ∪ S) ⟺ σ_p(Ai)(R) ∪ σ_p(Ai)(S)</code><br><br>
+            <strong>Why?</strong> Applying selection first reduces relation size <em>before</em> expensive join/product operations.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>⟺ Commuting Projection with Binary Ops</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Push projections down similarly:</strong><br>
+            <code>Π_C(R × S) ⟺ Π_A(R) × Π_B(S)  [C = A ∪ B]</code><br>
+            <code>Π_C(R ⋈ S) ⟺ Π_C(R) ⋈ Π_C(S)</code><br>
+            <code>Π_C(R ∪ S) ⟺ Π_C(R) ∪ Π_C(S)</code><br><br>
+            Eliminate unneeded columns early to reduce data volume.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Complexity -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">OPERATION COMPLEXITY (cardinality n, sorted tuples)</h3>
+    <div class="complexity-grid">
+      <div class="complexity-card">
+        <div class="complexity-op">σ (selection)</div>
+        <div class="complexity-label">without dup elimination</div>
+        <span class="complexity-val cv-low">O(log n)</span>
+      </div>
+      <div class="complexity-card">
+        <div class="complexity-op">π (projection)</div>
+        <div class="complexity-label">without dup elimination</div>
+        <span class="complexity-val cv-low">O(n)</span>
+      </div>
+      <div class="complexity-card">
+        <div class="complexity-op">π (projection)</div>
+        <div class="complexity-label">with dup elimination</div>
+        <span class="complexity-val cv-med">O(n log n)</span>
+      </div>
+      <div class="complexity-card">
+        <div class="complexity-op">GROUP BY</div>
+        <div class="complexity-label">aggregation</div>
+        <span class="complexity-val cv-med">O(n log n)</span>
+      </div>
+      <div class="complexity-card">
+        <div class="complexity-op">⋈ (join)</div>
+        <div class="complexity-label">nested loop</div>
+        <span class="complexity-val cv-high">O(n²)</span>
+      </div>
+      <div class="complexity-card">
+        <div class="complexity-op">× (Cartesian)</div>
+        <div class="complexity-label">always expensive</div>
+        <span class="complexity-val cv-high">O(n²) + large constant</span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" data-text="advanced zone starts">
+
+  <!-- ADVANCED: DATA LOCALIZATION + GLOBAL OPT -->
+  <section id="advanced" class="reveal">
+    <div class="section-label label-advanced">// Level 03</div>
+    <h2 class="section-title">🔴 Advanced</h2>
+    <p class="section-desc">Step 2: Data Localization — translating algebra queries on global relations into queries on physical fragments, then reduction and global optimization.</p>
+
+    <!-- Fragment Types -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin-bottom:1.5rem;letter-spacing:0.1em">FRAGMENTATION TYPES</h3>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">↔️</div>
+        <span class="card-tag tag-a">PHF</span>
+        <h3>Primary Horizontal Fragmentation</h3>
+        <p>Relation split by rows using selection predicates. Each fragment has a subset of tuples satisfying a condition.</p>
+        <div class="card-formula">
+EMP1 = σ(ENO ≤ "E3")(EMP)
+EMP2 = σ("E3" &lt; ENO ≤ "E6")(EMP)
+EMP3 = σ(ENO > "E6")(EMP)
+
+EMP = EMP1 ∪ EMP2 ∪ EMP3
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">↕️</div>
+        <span class="card-tag tag-a">VF</span>
+        <h3>Vertical Fragmentation</h3>
+        <p>Relation split by columns using projection. Each fragment has a subset of attributes (columns).</p>
+        <div class="card-formula">
+EMP1 = Π(ENO, ENAME)(EMP)
+EMP2 = Π(ENO, TITLE)(EMP)
+
+Note: ENO must be in both
+→ needed for reconstruction
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔀</div>
+        <span class="card-tag tag-a">DHF</span>
+        <h3>Derived Horizontal Fragmentation</h3>
+        <p>Fragment defined by joining with another relation. ASG fragmented based on EMP's fragmentation criterion.</p>
+        <div class="card-formula">
+EMP1 = σTITLE="Programmer"(EMP)
+EMP2 = σTITLE≠"Programmer"(EMP)
+
+ASG1 = ASG ⋈ENO EMP1
+ASG2 = ASG ⋈ENO EMP2
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧬</div>
+        <span class="card-tag tag-a">HF</span>
+        <h3>Hybrid Fragmentation</h3>
+        <p>Combines horizontal + vertical fragmentation. Both row and column splits applied.</p>
+        <div class="card-formula">
+EMP1 = σ(ENO≤"E4")(Π(ENO,ENAME)(EMP))
+EMP2 = σ(ENO>"E4")(Π(ENO,ENAME)(EMP))
+EMP3 = Π(ENO,TITLE)(EMP)
+        </div>
+      </div>
+    </div>
+
+    <!-- Reduction Strategies -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">REDUCTION STRATEGIES</h3>
+
+    <div class="accordion">
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>🔴 Reduction with Selection (PHF)</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Rule:</strong> σ_pj(Rj) = ∅ if for all x in R: ¬(pi(x) ∧ pj(x))<br><br>
+            If the selection predicate <em>contradicts</em> the fragment's definition predicate → the result is empty → <strong>eliminate that fragment</strong>.<br><br>
+            <strong>Example:</strong><br>
+            Query: <code>SELECT * FROM EMP WHERE ENO = "E5"</code><br>
+            EMP1 = σ(ENO ≤ "E3")(EMP) → ENO="E5" contradicts ENO≤"E3" → <strong>EMP1 empty, skip</strong><br>
+            EMP2 = σ("E3" &lt; ENO ≤ "E6")(EMP) → ENO="E5" satisfies this → <strong>keep EMP2 only</strong><br>
+            EMP3 = σ(ENO > "E6")(EMP) → contradicts → <strong>skip</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>🔴 Reduction with Join (PHF)</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Steps:</strong><br>
+            1. <strong>Distribute join over union:</strong> (R1 ∪ R2) ⋈ S ⟺ (R1 ⋈ S) ∪ (R2 ⋈ S)<br>
+            2. <strong>Eliminate empty joins:</strong> Ri ⋈ Rj = ∅ if their defining predicates are mutually exclusive<br><br>
+            <strong>Example:</strong><br>
+            EMP fragmented by ENO ≤ "E3" / ENO > "E3"<br>
+            ASG fragmented by ENO ≤ "E3" / ENO > "E3"<br>
+            After distributing: 4 potential join pairs<br>
+            EMP1 ⋈ ASG2 = ∅ (ENO ≤ "E3" and ENO > "E3" can't match)<br>
+            EMP2 ⋈ ASG1 = ∅ (same contradiction)<br>
+            Result: only <strong>EMP1⋈ASG1</strong> and <strong>EMP2⋈ASG2</strong> survive!
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>🔴 Reduction for Vertical Fragmentation (VF)</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Rule:</strong> Π_D(Ri) is useless if projection attributes D are not in A' (Ri's attribute set)<br><br>
+            <strong>Example:</strong><br>
+            EMP1 = Π(ENO, ENAME)(EMP) — has ENAME<br>
+            EMP2 = Π(ENO, TITLE)(EMP) — has TITLE but no ENAME<br><br>
+            Query: <code>SELECT ENAME FROM EMP</code><br>
+            → Π_ENAME applied to EMP2 is <strong>useless</strong> (ENAME not in EMP2)<br>
+            → <strong>Eliminate EMP2</strong> from the query, keep only EMP1
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>🔴 Reduction for Derived HF (DHF)</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Process:</strong><br>
+            1. Apply selection first (push down σ)<br>
+            2. Distribute joins over unions<br>
+            3. Apply PHF join reduction rules to eliminate empty results<br><br>
+            <strong>Example Query:</strong><br>
+            <code>WHERE ASG.ENO = EMP.ENO AND EMP.TITLE = "Mech. Eng."</code><br>
+            After applying σ TITLE="Mech.Eng." first:<br>
+            σ on EMP1(TITLE="Programmer") = ∅ → <strong>ASG1 ⋈ EMP1 branch eliminated</strong><br>
+            Only ASG2 ⋈ EMP2(TITLE="Mech.Eng.") survives
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAcc(this)">
+          <h4>🔴 Reduction for Hybrid Fragmentation</h4>
+          <span class="accordion-toggle">+</span>
+        </div>
+        <div class="accordion-body">
+          <div class="accordion-body-inner">
+            <strong>Combine all rules:</strong><br>
+            1. Remove empty relations (contradicting σ on horizontal fragments)<br>
+            2. Remove useless relations (Π on vertical fragments with wrong attributes)<br>
+            3. Distribute joins over unions → isolate and remove useless joins<br><br>
+            <strong>Example (Hybrid):</strong><br>
+            EMP1 = σ(ENO≤"E4")(Π(ENO,ENAME)(EMP))<br>
+            EMP2 = σ(ENO>"E4")(Π(ENO,ENAME)(EMP))<br>
+            EMP3 = Π(ENO,TITLE)(EMP)<br>
+            Query: <code>SELECT ENAME FROM EMP WHERE ENO = "E5"</code><br>
+            Step 1: σ ENO="E5" on EMP1 → contradicts ENO≤"E4" → <strong>EMP1 eliminated</strong><br>
+            Step 2: Π_ENAME on EMP3 → ENAME not in EMP3 → <strong>EMP3 eliminated</strong><br>
+            Result: only <strong>EMP2</strong> survives → Π_ENAME(σ_ENO="E5"(EMP2))
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Optimization -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">GLOBAL OPTIMIZATION</h3>
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <span class="card-tag tag-a">Cost Function</span>
+        <h3>Optimization Objective</h3>
+        <p>Minimize the combined cost function across all factors:</p>
+        <div class="card-formula">
+Cost = I/O cost
+     + CPU cost
+     + Communication cost
+
+→ WAN: weights heavily comm cost
+→ LAN: balanced weights
+→ Also: maximize throughput
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔍</div>
+        <span class="card-tag tag-a">Search Strategy</span>
+        <h3>Exhaustive vs Heuristic</h3>
+        <p><strong>Exhaustive:</strong> Cost-based, finds optimal solution. Combinatorial complexity — only for small spaces.</p>
+        <p style="margin-top:0.8rem"><strong>Heuristic:</strong> Not optimal but practical. Key heuristics:</p>
+        <ul class="heuristic-list">
+          <li data-n="01">Re-group <strong>common sub-expressions</strong></li>
+          <li data-n="02">Perform <strong>σ and Π first</strong> always</li>
+          <li data-n="03">Replace join with <strong>semijoins</strong></li>
+          <li data-n="04">Reorder ops to reduce <strong>intermediate sizes</strong></li>
+          <li data-n="05">Optimize <strong>individual operations</strong></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <span class="card-tag tag-a">Timing</span>
+        <h3>Static vs Dynamic vs Hybrid</h3>
+        <div class="card-formula">
+STATIC (compile time):
++ amortized over many executions
+- hard to estimate intermediate sizes
+- appropriate for exhaustive search
+
+DYNAMIC (run time):
++ accurate intermediate sizes
+- expensive, repeated every execution
+
+HYBRID:
+1. Compile with static algorithm
+2. If estimate error > threshold
+   → re-optimize at runtime
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <span class="card-tag tag-a">Statistics Needed</span>
+        <h3>Required Statistical Data</h3>
+        <ul class="heuristic-list">
+          <li data-n="R">Relation <strong>cardinality</strong> (tuple count)</li>
+          <li data-n="R">Size of a <strong>tuple</strong></li>
+          <li data-n="R">Fraction participating in <strong>join</strong></li>
+          <li data-n="A">Attribute <strong>domain cardinality</strong></li>
+          <li data-n="A">Number of <strong>distinct values</strong></li>
+        </ul>
+        <div class="card-formula" style="margin-top:1rem">
+Assumptions:
+• Attribute values: independent
+• Distribution: uniform within domain
+        </div>
+      </div>
+    </div>
+
+    <!-- Decision Sites -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">DECISION SITES FOR OPTIMIZATION</h3>
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <span class="card-tag tag-i">Centralized</span>
+        <h3>Single Site Decision</h3>
+        <p>One site determines the entire schedule. Simple approach but requires <strong>knowledge about all distributed data</strong>.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤝</div>
+        <span class="card-tag tag-i">Distributed</span>
+        <h3>All Sites Cooperate</h3>
+        <p>All sites coordinate to determine optimal schedule using only <strong>local information</strong>. More complex but more scalable.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⭐</div>
+        <span class="card-tag tag-a">Hybrid</span>
+        <h3>One Site + Local Decisions</h3>
+        <p>One site determines <strong>global schedule</strong>. Each participating site <strong>optimizes its own local sub-queries</strong> independently.</p>
+      </div>
+    </div>
+
+    <!-- Semijoins -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">SEMIJOINS — REDUCING TRANSFER COST</h3>
+    <div class="highlight-box">
+      <strong>Idea:</strong> Instead of transferring full relation R to join with S at a remote site, send only the join attribute of R first, filter S, then send back only matching tuples.<br><br>
+      <strong>R ⋉ S = Π_A(R ⋈ S)</strong> — semijoin of R with S on A<br><br>
+      Effective when: the join <strong>selectivity is low</strong> (few matching tuples) and <strong>communication overhead</strong> is not significant relative to savings.
+    </div>
+    <div class="diagram-box">
+      <div><span class="d-comment">-- Without semijoin (naive):</span></div>
+      <div><span class="d-site">Site 1</span> → transfer full R → <span class="d-site">Site 2</span></div>
+      <div><span class="d-site">Site 2</span> → R ⋈ S → result</div>
+      <div>&nbsp;</div>
+      <div><span class="d-comment">-- With semijoin:</span></div>
+      <div><span class="d-site">Site 1</span> → send Π_A(R) [join attributes only] → <span class="d-site">Site 2</span></div>
+      <div><span class="d-site">Site 2</span> → compute S' = S ⋉ Π_A(R) [filter S] → send S' back</div>
+      <div><span class="d-site">Site 1</span> → R ⋈ S' [small S' only!] → <span class="d-result">result</span></div>
+    </div>
+
+    <!-- Optimization Granularity -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">OPTIMIZATION GRANULARITY</h3>
+    <div class="strategy-grid">
+      <div class="strategy-card">
+        <h4>Single Query at a Time</h4>
+        <p>Each query optimized independently.<br><span class="con">Cannot reuse common intermediate results.</span></p>
+      </div>
+      <div class="strategy-card">
+        <h4>Multiple Queries at a Time</h4>
+        <p>Batch queries together, share common sub-expressions.<br><span class="pro">Efficient when many similar queries run together.</span><br><span class="con">Decision space much larger.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz" class="reveal">
+    <div class="quiz-section">
+      <h3>🎯 Quick Knowledge Check</h3>
+
+      <div class="quiz-q">
+        <p>Q1. Plan I costs 23,000 units, Plan II costs 460 units. What is the key difference?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. Plan II uses faster hardware</button>
+          <button class="quiz-opt" onclick="answer(this,true)">B. Plan II applies selection before transfer</button>
+          <button class="quiz-opt" onclick="answer(this,false)">C. Plan II skips the join operation</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Plan I uses more sites</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q2. A conjunctive query without negation is semantically incorrect when its query graph is...?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. Directed</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. Complete (fully connected)</button>
+          <button class="quiz-opt" onclick="answer(this,true)">C. NOT connected</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Cyclic</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q3. Vertical fragmentation splits a relation by...?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. Rows (tuples)</button>
+          <button class="quiz-opt" onclick="answer(this,true)">B. Columns (attributes)</button>
+          <button class="quiz-opt" onclick="answer(this,false)">C. Sites</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Index values</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q4. In WAN environments, which cost component dominates optimization decisions?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. CPU cost</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. I/O cost</button>
+          <button class="quiz-opt" onclick="answer(this,true)">C. Communication cost</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Memory cost</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q5. Hybrid optimization timing works by...?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. Only using dynamic optimization</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. Only using static optimization</button>
+          <button class="quiz-opt" onclick="answer(this,true)">C. Static compile + re-optimize at runtime if estimate error > threshold</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Running both in parallel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE COST CALCULATOR -->
+  <section id="calculator" class="reveal">
+    <div class="section-label label-advanced">// Interactive Tool</div>
+    <h2 class="section-title">⚡ Cost Plan Calculator</h2>
+    <p class="section-desc">Adjust relation sizes and tuple costs — see live which plan wins and by how much.</p>
+
+    <div style="background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:16px;padding:2rem;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.5rem;margin-bottom:2rem;">
+
+        <div>
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">EMP SIZE</label>
+          <input type="range" id="cEMP" min="50" max="2000" value="400" style="width:100%;accent-color:var(--accent)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vEMP">400</span> tuples</div>
+        </div>
+
+        <div>
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">ASG SIZE</label>
+          <input type="range" id="cASG" min="50" max="5000" value="1000" style="width:100%;accent-color:var(--accent)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vASG">1000</span> tuples</div>
+        </div>
+
+        <div>
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">MATCHING TUPLES (TITLE="manager")</label>
+          <input type="range" id="cMatch" min="1" max="200" value="20" style="width:100%;accent-color:var(--accent)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vMatch">20</span> tuples</div>
+        </div>
+
+        <div>
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">TRANSFER COST / TUPLE</label>
+          <input type="range" id="cTrans" min="1" max="50" value="10" style="width:100%;accent-color:var(--accent)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vTrans">10</span>x access cost</div>
+        </div>
+
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.5rem;text-align:center;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--advanced);letter-spacing:0.2em;margin-bottom:0.8rem">PLAN I — BRUTE FORCE</div>
+          <div style="font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--advanced)" id="cost1">23,000</div>
+          <div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">units</div>
+        </div>
+        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:1.5rem;text-align:center;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--beginner);letter-spacing:0.2em;margin-bottom:0.8rem">PLAN II — OPTIMIZED</div>
+          <div style="font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--beginner)" id="cost2">460</div>
+          <div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">units</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--dim);margin-bottom:0.4rem">PLAN II IS FASTER BY</div>
+        <div style="font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;color:var(--gold)" id="speedup">50.0×</div>
+      </div>
+
+      <!-- Bar chart -->
+      <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:flex-end;height:120px;">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0.4rem;">
+          <div id="bar1" style="width:100%;background:rgba(239,68,68,0.6);border-radius:4px 4px 0 0;transition:height 0.4s;height:100%;min-height:4px;"></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--advanced)">PLAN I</div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0.4rem;">
+          <div id="bar2" style="width:100%;background:rgba(34,197,94,0.6);border-radius:4px 4px 0 0;transition:height 0.4s;height:2%;min-height:4px;"></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--beginner)">PLAN II</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUERY TREE VISUALIZER -->
+  <section id="querytree" class="reveal">
+    <div class="section-label label-intermediate">// Visual Tool</div>
+    <h2 class="section-title">🌲 Interactive Query Tree</h2>
+    <p class="section-desc">Click any node to see what it does. Toggle optimization to see how pushing selections down transforms the tree.</p>
+
+    <div style="background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:16px;padding:2rem;">
+      <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+        <button onclick="setTree('naive')" id="btnNaive" class="pill pill-advanced" style="cursor:pointer">Naive Tree</button>
+        <button onclick="setTree('optimized')" id="btnOpt" class="pill pill-beginner" style="cursor:pointer;opacity:0.5">Optimized Tree</button>
+      </div>
+
+      <canvas id="treeCanvas" width="700" height="400" style="width:100%;max-width:700px;display:block;margin:0 auto;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);"></canvas>
+
+      <div id="nodeInfo" style="margin-top:1.2rem;padding:1rem;background:rgba(0,255,231,0.04);border:1px solid var(--border);border-radius:8px;font-size:0.85rem;color:var(--dim);font-family:'IBM Plex Mono',monospace;min-height:60px;">
+        Click any node to see details...
+      </div>
+    </div>
+  </section>
+
+  <!-- EXAM CHEAT SHEET -->
+  <section id="cheatsheet" class="reveal">
+    <div class="section-label label-core">// Quick Reference</div>
+    <h2 class="section-title">📋 Exam Cheat Sheet</h2>
+    <p class="section-desc">Everything distilled. Memorize these — boards love them.</p>
+
+    <div class="cards-grid">
+
+      <div class="card">
+        <div class="card-icon">🏗️</div>
+        <span class="card-tag tag-c">Must Know</span>
+        <h3>4 Steps of Decomposition</h3>
+        <ul class="heuristic-list">
+          <li data-n="1">Normalization — CNF/DNF form</li>
+          <li data-n="2">Analysis — reject incorrect queries, check query graph connectivity</li>
+          <li data-n="3">Simplification — remove redundant predicates via idempotency</li>
+          <li data-n="4">Restructuring — calculus → algebra, build + optimize query tree</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🧩</div>
+        <span class="card-tag tag-c">Must Know</span>
+        <h3>Fragmentation Rules</h3>
+        <ul class="heuristic-list">
+          <li data-n="PHF">σ_pj(Rj) = ∅ if predicates pi ∧ pj impossible → eliminate fragment</li>
+          <li data-n="VF">Π_D(Ri) useless if D ⊄ A' → eliminate fragment</li>
+          <li data-n="DHF">Distribute joins over unions, then apply PHF rules</li>
+          <li data-n="HF">Combine all three reduction rules</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">📐</div>
+        <span class="card-tag tag-c">Must Know</span>
+        <h3>Key Transformation Rules</h3>
+        <div class="card-formula">
+σ pushed DOWN before joins ✓
+Π pushed DOWN before joins ✓
+σ(σ(R)) → σ(p1∧p2)(R)     ✓
+Π(Π(R))  → Π_A'(R)         ✓
+Commutativity: R⋈S = S⋈R   ✓
+Associativity: (R⋈S)⋈T =
+               R⋈(S⋈T)      ✓
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">💰</div>
+        <span class="card-tag tag-c">Must Know</span>
+        <h3>Optimization Dimensions</h3>
+        <ul class="heuristic-list">
+          <li data-n="G1">Granularity: single query vs multiple queries</li>
+          <li data-n="G2">Timing: static / dynamic / hybrid</li>
+          <li data-n="G3">Decision site: centralized / distributed / hybrid</li>
+          <li data-n="G4">Search: exhaustive (optimal) / heuristic (practical)</li>
+          <li data-n="G5">Network: WAN (min comm) / LAN (total cost)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">⚖️</div>
+        <span class="card-tag tag-c">Must Know</span>
+        <h3>Semijoin Benefit</h3>
+        <div class="card-formula">
+R ⋉ S = Π_A(R ⋈ S)
+
+Use when:
+• Join selectivity is LOW
+• Communication overhead LOW
+• Many non-matching tuples in R
+
+Avoid when:
+• Most tuples match anyway
+• Small relations → just send all
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <span class="card-tag tag-c">Must Know</span>
+        <h3>Statistics Assumptions</h3>
+        <ul class="heuristic-list">
+          <li data-n="★">Attribute values are <strong>independent</strong> of each other</li>
+          <li data-n="★">Values are <strong>uniformly distributed</strong> within their domain</li>
+          <li data-n="★">These assumptions can cause estimation errors → justify hybrid timing</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- One-liner formula table -->
+    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">PLAN COST FORMULAS — MEMORIZE</h3>
+    <div class="cost-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Plan</th>
+            <th>Formula</th>
+            <th>Key Insight</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Plan I</strong></td>
+            <td class="cost-val">|EMP|×c_t + |ASG|×c_t + |ASG|×c_a + |EMP|×|ASG'|×c_a</td>
+            <td>Transfer everything first, then filter</td>
+          </tr>
+          <tr>
+            <td><strong>Plan II</strong></td>
+            <td class="cost-val">2|ASG'|×c_a + 2|ASG'|×c_t + 2|ASG'|×c_a×2 + 2|EMP'|×c_t</td>
+            <td>Filter locally, transfer small results only</td>
+          </tr>
+          <tr>
+            <td><strong>General rule</strong></td>
+            <td class="cost-val">σ first → reduces |R| before ⋈</td>
+            <td class="cost-win">Always push selections down!</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- EXTRA QUIZ -->
+  <section id="quiz2" class="reveal">
+    <div class="quiz-section">
+      <h3>🎯 Advanced Quiz — Reduction & Optimization</h3>
+
+      <div class="quiz-q">
+        <p>Q6. EMP fragmented: EMP1=σ(ENO≤"E3"), EMP2=σ(ENO>"E3"). Query: WHERE ENO="E2". Which fragment survives?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,true)">A. EMP1 only</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. EMP2 only</button>
+          <button class="quiz-opt" onclick="answer(this,false)">C. Both EMP1 and EMP2</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Neither</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q7. In vertical fragmentation, EMP1=Π(ENO,ENAME), EMP2=Π(ENO,TITLE). Query: SELECT TITLE FROM EMP. Which fragment is useless?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,true)">A. EMP1 (no TITLE attribute)</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. EMP2 (no ENAME attribute)</button>
+          <button class="quiz-opt" onclick="answer(this,false)">C. Neither — both needed</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Both are useless</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q8. What does the query graph tool detect?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. I/O cost of the query</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. Number of fragments needed</button>
+          <button class="quiz-opt" onclick="answer(this,true)">C. Semantic incorrectness via disconnected graph</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Optimal join order</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q9. After distributing join over union for PHF, what rule eliminates useless joins?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. Π_D(Ri) = ∅ if D ⊄ A'</button>
+          <button class="quiz-opt" onclick="answer(this,true)">B. Ri ⋈ Rj = ∅ if defining predicates are mutually exclusive</button>
+          <button class="quiz-opt" onclick="answer(this,false)">C. σ_p(R) = R if p is always true</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. Commutativity of join</button>
+        </div>
+      </div>
+
+      <div class="quiz-q">
+        <p>Q10. Static optimization is "amortized over many executions" — what does this mean?</p>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(this,false)">A. It runs faster each time it's called</button>
+          <button class="quiz-opt" onclick="answer(this,false)">B. It uses less memory over time</button>
+          <button class="quiz-opt" onclick="answer(this,true)">C. One-time optimization cost spread over many query executions</button>
+          <button class="quiz-opt" onclick="answer(this,false)">D. It recalculates statistics over time</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>⬡ Distributed Query Processing — Beginner to Advanced Roadmap<br>
+  Built for <span>CSE Students</span> · Chapters 5–7 Complete Coverage · Ibrahim Pavel</p>
+</footer>
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ═══════════════════════════════════════════
+// THREE.JS 3D BACKGROUND
+// ═══════════════════════════════════════════
+const canvas = document.getElementById('canvas3d');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+camera.position.z = 30;
+
+// Node network
+const nodeCount = 80;
+const nodes = [];
+const nodeGeom = new THREE.SphereGeometry(0.15, 8, 8);
+
+const colors = [
+  new THREE.Color(0x00ffe7),
+  new THREE.Color(0xff6b35),
+  new THREE.Color(0xa855f7),
+  new THREE.Color(0x22c55e),
+];
+
+for(let i=0; i<nodeCount; i++){
+  const mat = new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random()*colors.length)], transparent:true, opacity:0.7 });
+  const mesh = new THREE.Mesh(nodeGeom, mat);
+  mesh.position.set(
+    (Math.random()-0.5)*80,
+    (Math.random()-0.5)*60,
+    (Math.random()-0.5)*40
+  );
+  mesh.userData = {
+    vx: (Math.random()-0.5)*0.02,
+    vy: (Math.random()-0.5)*0.02,
+    vz: (Math.random()-0.5)*0.01,
+    pulse: Math.random()*Math.PI*2
+  };
+  scene.add(mesh);
+  nodes.push(mesh);
+}
+
+// Edges
+const edgeMat = new THREE.LineBasicMaterial({ color:0x00ffe7, transparent:true, opacity:0.08 });
+const edges = [];
+for(let i=0; i<nodeCount; i++){
+  for(let j=i+1; j<nodeCount; j++){
+    const d = nodes[i].position.distanceTo(nodes[j].position);
+    if(d < 15 && Math.random() > 0.7){
+      const points = [nodes[i].position.clone(), nodes[j].position.clone()];
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geom, edgeMat.clone());
+      scene.add(line);
+      edges.push({ line, i, j });
+    }
+  }
+}
+
+// Data packets
+const packetGeom = new THREE.SphereGeometry(0.08, 6, 6);
+const packets = [];
+for(let i=0; i<20; i++){
+  const edge = edges[Math.floor(Math.random()*edges.length)];
+  if(!edge) continue;
+  const mat = new THREE.MeshBasicMaterial({ color:0x00ffe7, transparent:true, opacity:0.9 });
+  const mesh = new THREE.Mesh(packetGeom, mat);
+  mesh.userData = { edge, t: Math.random() };
+  scene.add(mesh);
+  packets.push(mesh);
+}
+
+// Mouse influence
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', e => {
+  mouseX = (e.clientX/window.innerWidth-0.5)*2;
+  mouseY = -(e.clientY/window.innerHeight-0.5)*2;
+});
+
+let t = 0;
+function animate(){
+  requestAnimationFrame(animate);
+  t += 0.005;
+
+  // camera gentle rotation
+  camera.position.x += (mouseX*5 - camera.position.x)*0.02;
+  camera.position.y += (mouseY*3 - camera.position.y)*0.02;
+  camera.lookAt(scene.position);
+
+  // move nodes
+  nodes.forEach(n => {
+    n.position.x += n.userData.vx;
+    n.position.y += n.userData.vy;
+    n.position.z += n.userData.vz;
+    // bounce
+    if(Math.abs(n.position.x)>40){ n.userData.vx *= -1; }
+    if(Math.abs(n.position.y)>30){ n.userData.vy *= -1; }
+    if(Math.abs(n.position.z)>20){ n.userData.vz *= -1; }
+    // pulse
+    n.userData.pulse += 0.03;
+    n.material.opacity = 0.4 + Math.sin(n.userData.pulse)*0.3;
+  });
+
+  // update edge positions
+  edges.forEach(({line, i, j}) => {
+    const positions = line.geometry.attributes.position;
+    if(positions){
+      positions.setXYZ(0, nodes[i].position.x, nodes[i].position.y, nodes[i].position.z);
+      positions.setXYZ(1, nodes[j].position.x, nodes[j].position.y, nodes[j].position.z);
+      positions.needsUpdate = true;
+    }
+  });
+
+  // animate packets along edges
+  packets.forEach(p => {
+    const {edge} = p.userData;
+    p.userData.t = (p.userData.t + 0.008) % 1;
+    const pt = p.userData.t;
+    const n1 = nodes[edge.i].position;
+    const n2 = nodes[edge.j].position;
+    p.position.lerpVectors(n1, n2, pt);
+  });
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════
+// CURSOR
+// ═══════════════════════════════════════════
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let rx=0,ry=0;
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX+'px';
+  cursor.style.top  = e.clientY+'px';
+  rx += (e.clientX-rx)*0.15;
+  ry += (e.clientY-ry)*0.15;
+  ring.style.left = rx+'px';
+  ring.style.top  = ry+'px';
+});
+
+function animRing(){
+  rx += (parseFloat(cursor.style.left||0)-rx)*0.15;
+  ry += (parseFloat(cursor.style.top||0)-ry)*0.15;
+  ring.style.left = rx+'px';
+  ring.style.top  = ry+'px';
+  requestAnimationFrame(animRing);
+}
+animRing();
+
+document.addEventListener('mousedown', () => cursor.style.transform = 'translate(-50%,-50%) scale(0.7)');
+document.addEventListener('mouseup',   () => cursor.style.transform = 'translate(-50%,-50%) scale(1)');
+
+// ═══════════════════════════════════════════
+// SCROLL PROGRESS
+// ═══════════════════════════════════════════
+const progress = document.getElementById('progress');
+const scrollTopBtn = document.getElementById('scrollTop');
+window.addEventListener('scroll', () => {
+  const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
+  progress.style.width = scrollPct + '%';
+  scrollTopBtn.classList.toggle('visible', window.scrollY > 400);
+});
+
+// ═══════════════════════════════════════════
+// REVEAL ON SCROLL
+// ═══════════════════════════════════════════
+const revealEls = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('visible'); }
+  });
+}, { threshold:0.1 });
+revealEls.forEach(el => { revealObserver.observe(el); el.classList.add('visible'); });
+
+// ═══════════════════════════════════════════
+// COST CALCULATOR
+// ═══════════════════════════════════════════
+function calcCosts(){
+  const emp   = +document.getElementById('cEMP').value;
+  const asg   = +document.getElementById('cASG').value;
+  const match = +document.getElementById('cMatch').value;
+  const ct    = +document.getElementById('cTrans').value; // transfer multiplier
+  const ca    = 1; // access cost = 1
+
+  document.getElementById('vEMP').textContent   = emp;
+  document.getElementById('vASG').textContent   = asg;
+  document.getElementById('vMatch').textContent = match;
+  document.getElementById('vTrans').textContent = ct;
+
+  // Plan I
+  const p1 = emp*ct + asg*ct + asg*ca + emp*match*ca;
+  // Plan II (2 sites each, simplified)
+  const asgPrime = match; // only matching tuples transferred
+  const p2 = 2*asgPrime*ca + 2*asgPrime*ct + 2*asgPrime*ca*2 + 2*asgPrime*ct;
+
+  document.getElementById('cost1').textContent = p1.toLocaleString();
+  document.getElementById('cost2').textContent = p2.toLocaleString();
+  const speedup = p1/Math.max(p2,1);
+  document.getElementById('speedup').textContent = speedup.toFixed(1) + '×';
+
+  // bars
+  const pct2 = Math.min(p2/p1*100, 100);
+  document.getElementById('bar1').style.height = '100%';
+  document.getElementById('bar2').style.height = Math.max(pct2,2) + '%';
+}
+['cEMP','cASG','cMatch','cTrans'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcCosts);
+});
+calcCosts();
+
+// ═══════════════════════════════════════════
+// QUERY TREE VISUALIZER
+// ═══════════════════════════════════════════
+const treeCanvas = document.getElementById('treeCanvas');
+const ctx = treeCanvas.getContext('2d');
+let currentTree = 'naive';
+
+const treeData = {
+  naive: {
+    label:'Π ENAME', color:'#a855f7', x:350, y:40,
+    info:'PROJECT: Π ENAME — final result. Outputs only the ENAME attribute.',
+    children:[{
+      label:'σ conditions', color:'#f59e0b', x:350, y:120,
+      info:'SELECT: σ(ENAME≠"J.DOE" ∧ JNAME="CAD/CAM" ∧ (Dur=12 ∨ Dur=24)) — filters applied AFTER the expensive join!',
+      children:[{
+        label:'⋈ ENO & JNO', color:'#ef4444', x:350, y:210,
+        info:'JOIN: Cartesian product then filter — very expensive! Both full relations EMP and ASG sent across network.',
+        children:[
+          { label:'EMP', color:'#00ffe7', x:200, y:310, info:'Relation EMP — all 400 tuples. Full transfer to query site.', children:[] },
+          { label:'ASG', color:'#00ffe7', x:350, y:310, info:'Relation ASG — all 1000 tuples. Full transfer to query site.', children:[] },
+          { label:'PROJ', color:'#00ffe7', x:500, y:310, info:'Relation PROJ — all tuples transferred.', children:[] },
+        ]
+      }]
+    }]
+  },
+  optimized: {
+    label:'Π ENAME', color:'#a855f7', x:350, y:30,
+    info:'PROJECT: Final output — only ENAME column.',
+    children:[{
+      label:'⋈ ENO', color:'#22c55e', x:350, y:110,
+      info:'JOIN on ENO — now joining SMALL pre-filtered relations. Much cheaper!',
+      children:[{
+        label:'σ ENAME≠J.Doe', color:'#f59e0b', x:200, y:200,
+        info:'SELECTION pushed down to EMP FIRST — eliminates unwanted employees before join.',
+        children:[
+          { label:'EMP', color:'#00ffe7', x:200, y:300, info:'EMP relation — selection applied locally before any transfer.', children:[] }
+        ]
+      },{
+        label:'⋈ JNO', color:'#22c55e', x:500, y:200,
+        info:'JOIN ASG with filtered PROJ — smaller intermediate result.',
+        children:[{
+          label:'σ Dur=12|24', color:'#f59e0b', x:400, y:290,
+          info:'SELECTION on duration applied to ASG early — only matching tuples remain.',
+          children:[
+            { label:'ASG', color:'#00ffe7', x:400, y:370, info:'ASG — only 20 matching tuples survive σ filter.', children:[] }
+          ]
+        },{
+          label:'σ JNAME=CAD', color:'#f59e0b', x:580, y:290,
+          info:'SELECTION on PROJ for project name — reduces PROJ before join.',
+          children:[
+            { label:'PROJ', color:'#00ffe7', x:580, y:370, info:'PROJ — filtered to only CAD/CAM project.', children:[] }
+          ]
+        }]
+      }]
+    }]
+  }
+};
+
+function drawNode(node, hovered) {
+  const r = 28;
+  ctx.beginPath();
+  ctx.arc(node.x, node.y, r, 0, Math.PI*2);
+  const grd = ctx.createRadialGradient(node.x, node.y, 4, node.x, node.y, r);
+  grd.addColorStop(0, node.color+'33');
+  grd.addColorStop(1, node.color+'11');
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.strokeStyle = node.color;
+  ctx.lineWidth = hovered === node ? 2.5 : 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#fff';
+  ctx.font = hovered === node ? 'bold 9px IBM Plex Mono' : '8px IBM Plex Mono';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const words = node.label.split(' ');
+  if(words.length > 1){
+    ctx.fillText(words[0], node.x, node.y-5);
+    ctx.fillText(words.slice(1).join(' '), node.x, node.y+6);
+  } else {
+    ctx.fillText(node.label, node.x, node.y);
+  }
+}
+
+function drawEdge(parent, child) {
+  ctx.beginPath();
+  ctx.moveTo(parent.x, parent.y+28);
+  ctx.lineTo(child.x, child.y-28);
+  ctx.strokeStyle = 'rgba(0,255,231,0.2)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function getAllNodes(node, list=[]) {
+  list.push(node);
+  node.children.forEach(c => getAllNodes(c, list));
+  return list;
+}
+
+function drawTree(node, hovered=null) {
+  node.children.forEach(child => {
+    drawEdge(node, child);
+    drawTree(child, hovered);
+  });
+  drawNode(node, hovered);
+}
+
+let hoveredNode = null;
+
+function renderTree(hovered=null) {
+  ctx.clearRect(0,0,treeCanvas.width,treeCanvas.height);
+  const root = treeData[currentTree];
+  drawTree(root, hovered);
+}
+
+treeCanvas.addEventListener('mousemove', e => {
+  const rect = treeCanvas.getBoundingClientRect();
+  const scaleX = treeCanvas.width / rect.width;
+  const scaleY = treeCanvas.height / rect.height;
+  const mx = (e.clientX - rect.left)*scaleX;
+  const my = (e.clientY - rect.top)*scaleY;
+  const nodes = getAllNodes(treeData[currentTree]);
+  hoveredNode = nodes.find(n => Math.hypot(n.x-mx, n.y-my) < 30) || null;
+  renderTree(hoveredNode);
+  treeCanvas.style.cursor = hoveredNode ? 'pointer' : 'default';
+});
+
+treeCanvas.addEventListener('click', e => {
+  if(hoveredNode){
+    document.getElementById('nodeInfo').innerHTML =
+      '<strong style="color:var(--accent)">' + hoveredNode.label + '</strong><br>' + hoveredNode.info;
+  }
+});
+
+function setTree(type) {
+  currentTree = type;
+  document.getElementById('btnNaive').style.opacity = type==='naive' ? '1' : '0.5';
+  document.getElementById('btnOpt').style.opacity   = type==='optimized' ? '1' : '0.5';
+  document.getElementById('nodeInfo').textContent = 'Click any node to see details...';
+  renderTree();
+}
+
+renderTree();
+
+// ═══════════════════════════════════════════
+// ACCORDION
+// ═══════════════════════════════════════════
+function toggleAcc(header) {
+  const item = header.parentElement;
+  item.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════
+function answer(btn, correct) {
+  const opts = btn.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.disabled = true);
+  btn.classList.add(correct ? 'correct' : 'wrong');
+  if(!correct){
+    opts.forEach(o => { if(o.dataset.correct !== undefined || o.getAttribute('onclick').includes('true')) o.classList.add('correct'); });
+  }
+}
+</script>
+</body>
+</html>
