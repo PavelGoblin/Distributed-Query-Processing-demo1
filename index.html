@@ -1,2267 +1,1772 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Distributed Query Processing — Beginner to Advanced</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;600&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<style>
-  :root {
-    --bg: #020a14;
-    --bg2: #050f1e;
-    --accent: #00ffe7;
-    --accent2: #ff6b35;
-    --accent3: #a855f7;
-    --gold: #ffd700;
-    --text: #c8d8e8;
-    --dim: #4a6080;
-    --card: rgba(0,255,231,0.04);
-    --border: rgba(0,255,231,0.15);
-    --beginner: #22c55e;
-    --intermediate: #f59e0b;
-    --advanced: #ef4444;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Query Processing (DQP)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fira+Code:wght@400;500&display=swap');
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  html { scroll-behavior: smooth; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #06b6d4;
+            --accent: #f59e0b;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --glass: rgba(255, 255, 255, 0.1);
+        }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Space Grotesk', sans-serif;
-    overflow-x: hidden;
-    cursor: none;
-  }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
 
-  /* CUSTOM CURSOR */
-  .cursor {
-    position: fixed; width:12px; height:12px;
-    background: var(--accent); border-radius:50%;
-    pointer-events:none; z-index:9999;
-    transform:translate(-50%,-50%);
-    transition: transform 0.1s, background 0.2s;
-    mix-blend-mode: difference;
-  }
-  .cursor-ring {
-    position:fixed; width:36px; height:36px;
-    border:1px solid var(--accent); border-radius:50%;
-    pointer-events:none; z-index:9998;
-    transform:translate(-50%,-50%);
-    transition: all 0.15s ease;
-    opacity:0.5;
-  }
+        .presentation {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-  /* CANVAS */
-  #canvas3d {
-    position:fixed; top:0; left:0;
-    width:100%; height:100%;
-    z-index:0;
-    pointer-events:none;
-  }
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
 
-  /* NAV */
-  nav {
-    position:fixed; top:0; left:0; right:0;
-    z-index:100;
-    background: rgba(2,10,20,0.85);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
-    display:flex; align-items:center; justify-content:space-between;
-    height:60px;
-  }
+        .bg-animation .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 15s infinite ease-in-out;
+        }
 
-  .nav-logo {
-    font-family:'Orbitron',monospace;
-    font-size:0.8rem;
-    color: var(--accent);
-    letter-spacing:0.2em;
-    text-transform:uppercase;
-  }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+            50% { transform: translate(calc(50px * var(--dir-x)), calc(-100px * var(--dir-y))) scale(1.5); opacity: 0.6; }
+        }
 
-  .nav-links {
-    display:flex; gap:1.5rem;
-    list-style:none;
-  }
+        .bg-animation .connection-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.3;
+            animation: line-flow 8s infinite linear;
+        }
 
-  .nav-links a {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.7rem;
-    color: var(--dim);
-    text-decoration:none;
-    letter-spacing:0.1em;
-    text-transform:uppercase;
-    transition:color 0.2s;
-  }
-  .nav-links a:hover { color:var(--accent); }
+        @keyframes line-flow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
 
-  /* MAIN */
-  main {
-    position:relative; z-index:1;
-    padding-top:60px;
-  }
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            z-index: 100;
+            transition: width 0.4s ease;
+            box-shadow: 0 0 20px var(--primary);
+        }
 
-  /* HERO */
-  .hero {
-    min-height:100vh;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    text-align:center;
-    padding:2rem;
-    position:relative;
-  }
+        /* Navigation */
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 100;
+        }
 
-  .hero-badge {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.7rem;
-    color:var(--accent);
-    letter-spacing:0.3em;
-    text-transform:uppercase;
-    background: rgba(0,255,231,0.08);
-    border:1px solid var(--border);
-    padding:0.4rem 1.2rem;
-    border-radius:2rem;
-    margin-bottom:2rem;
-    animation: fadeIn 1s ease;
-  }
+        .nav-btn {
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
 
-  .hero h1 {
-    font-family:'Orbitron',monospace;
-    font-size:clamp(2.5rem,6vw,5rem);
-    font-weight:900;
-    line-height:1.1;
-    margin-bottom:1.5rem;
-    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent3) 100%);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    background-clip:text;
-    animation: slideUp 1s ease 0.2s both;
-  }
+        .nav-btn:hover:not(:disabled) {
+            background: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
+        }
 
-  .hero-sub {
-    font-size:1.1rem;
-    color:var(--dim);
-    max-width:600px;
-    line-height:1.7;
-    animation: slideUp 1s ease 0.4s both;
-    margin-bottom:3rem;
-  }
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
 
-  .roadmap-pills {
-    display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;
-    animation: slideUp 1s ease 0.6s both;
-    margin-bottom:3rem;
-  }
+        .slide-counter {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            min-width: 80px;
+            text-align: center;
+        }
 
-  .pill {
-    padding:0.5rem 1.5rem;
-    border-radius:2rem;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.75rem;
-    font-weight:600;
-    letter-spacing:0.1em;
-    cursor:pointer;
-    transition:all 0.3s;
-  }
-  .pill-beginner { background:rgba(34,197,94,0.15); border:1px solid var(--beginner); color:var(--beginner); }
-  .pill-intermediate { background:rgba(245,158,11,0.15); border:1px solid var(--intermediate); color:var(--intermediate); }
-  .pill-advanced { background:rgba(239,68,68,0.15); border:1px solid var(--advanced); color:var(--advanced); }
-  .pill:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(0,0,0,0.3); }
+        .slide-counter span {
+            color: var(--primary);
+            font-size: 1.4rem;
+        }
 
-  .scroll-hint {
-    animation: bounce 2s infinite;
-    color:var(--dim);
-    font-size:0.75rem;
-    font-family:'IBM Plex Mono',monospace;
-    letter-spacing:0.2em;
-  }
+        /* Keyboard Hint */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0.7;
+        }
 
-  /* SECTION */
-  section {
-    padding:5rem 2rem;
-    max-width:1200px;
-    margin:0 auto;
-    position:relative;
-  }
+        .key {
+            background: var(--bg-card);
+            border: 1px solid var(--text-muted);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
 
-  .section-label {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.7rem;
-    letter-spacing:0.4em;
-    text-transform:uppercase;
-    margin-bottom:1rem;
-  }
-  .label-beginner { color:var(--beginner); }
-  .label-intermediate { color:var(--intermediate); }
-  .label-advanced { color:var(--advanced); }
-  .label-core { color:var(--accent); }
+        /* Slide Container */
+        .slides-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            perspective: 2000px;
+        }
 
-  .section-title {
-    font-family:'Orbitron',monospace;
-    font-size:clamp(1.5rem,3vw,2.5rem);
-    font-weight:700;
-    margin-bottom:1rem;
-    color:#fff;
-  }
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 80px 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0.8) rotateY(-20deg);
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none;
+            z-index: 1;
+        }
 
-  .section-desc {
-    color:var(--dim);
-    font-size:1rem;
-    line-height:1.7;
-    max-width:700px;
-    margin-bottom:3rem;
-  }
+        .slide.active {
+            opacity: 1;
+            transform: scale(1) rotateY(0);
+            pointer-events: auto;
+            z-index: 10;
+        }
 
-  /* LEVEL INDICATOR */
-  .level-bar {
-    display:flex; align-items:center; gap:1rem;
-    margin-bottom:4rem;
-    overflow-x:auto;
-    padding-bottom:1rem;
-  }
+        .slide.prev {
+            opacity: 0;
+            transform: scale(0.8) translateX(-100%);
+        }
 
-  .level-step {
-    display:flex; flex-direction:column; align-items:center;
-    gap:0.5rem; min-width:120px;
-    opacity:0.4;
-    transition:opacity 0.3s;
-  }
-  .level-step.active { opacity:1; }
-  .level-dot { width:16px; height:16px; border-radius:50%; border:2px solid; }
-  .level-line { height:2px; flex:1; min-width:40px; }
-  .level-step span { font-family:'IBM Plex Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; text-align:center; }
+        .slide.next {
+            opacity: 0;
+            transform: scale(0.8) translateX(100%);
+        }
 
-  /* CARDS GRID */
-  .cards-grid {
-    display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px,1fr));
-    gap:1.5rem;
-    margin-bottom:3rem;
-  }
+        /* Slide Content Animations */
+        .slide-content {
+            width: 100%;
+            max-width: 1200px;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.6s ease 0.3s;
+        }
 
-  .card {
-    background: var(--card);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:1.8rem;
-    position:relative;
-    overflow:hidden;
-    transition:all 0.4s cubic-bezier(0.23,1,0.32,1);
-  }
+        .slide.active .slide-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-  .card::before {
-    content:'';
-    position:absolute; top:0; left:0; right:0; height:2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity:0;
-    transition:opacity 0.3s;
-  }
-  .card:hover { transform:translateY(-6px); border-color:rgba(0,255,231,0.4); box-shadow:0 20px 60px rgba(0,0,0,0.4), 0 0 40px rgba(0,255,231,0.05); }
-  .card:hover::before { opacity:1; }
+        .animate-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.5s ease;
+        }
 
-  .card-icon { font-size:2rem; margin-bottom:1rem; }
-  .card-tag {
-    display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.6rem;
-    letter-spacing:0.15em;
-    text-transform:uppercase;
-    padding:0.2rem 0.7rem;
-    border-radius:1rem;
-    margin-bottom:0.8rem;
-  }
-  .tag-b { background:rgba(34,197,94,0.1); color:var(--beginner); border:1px solid rgba(34,197,94,0.3); }
-  .tag-i { background:rgba(245,158,11,0.1); color:var(--intermediate); border:1px solid rgba(245,158,11,0.3); }
-  .tag-a { background:rgba(239,68,68,0.1); color:var(--advanced); border:1px solid rgba(239,68,68,0.3); }
-  .tag-c { background:rgba(0,255,231,0.1); color:var(--accent); border:1px solid var(--border); }
+        .slide.active .animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-  .card h3 {
-    font-family:'Orbitron',monospace;
-    font-size:1rem;
-    font-weight:700;
-    color:#fff;
-    margin-bottom:0.8rem;
-    line-height:1.3;
-  }
+        .delay-1 { transition-delay: 0.1s; }
+        .delay-2 { transition-delay: 0.2s; }
+        .delay-3 { transition-delay: 0.3s; }
+        .delay-4 { transition-delay: 0.4s; }
+        .delay-5 { transition-delay: 0.5s; }
+        .delay-6 { transition-delay: 0.6s; }
+        .delay-7 { transition-delay: 0.7s; }
+        .delay-8 { transition-delay: 0.8s; }
 
-  .card p {
-    font-size:0.88rem;
-    color:var(--dim);
-    line-height:1.7;
-    margin-bottom:1rem;
-  }
+        /* Typography */
+        .slide-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            line-height: 1.2;
+        }
 
-  .card-formula {
-    background:rgba(0,0,0,0.4);
-    border:1px solid rgba(0,255,231,0.1);
-    border-radius:8px;
-    padding:0.8rem 1rem;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.78rem;
-    color:var(--accent);
-    line-height:1.6;
-    overflow-x:auto;
-  }
+        .slide-subtitle {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
 
-  /* COST TABLE */
-  .cost-table-wrap {
-    overflow-x:auto;
-    margin:2rem 0;
-    border-radius:12px;
-    border:1px solid var(--border);
-  }
+        .section-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
 
-  table {
-    width:100%;
-    border-collapse:collapse;
-    font-size:0.85rem;
-  }
+        /* Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+            width: 100%;
+        }
 
-  thead { background:rgba(0,255,231,0.08); }
-  th {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.7rem;
-    letter-spacing:0.1em;
-    text-transform:uppercase;
-    color:var(--accent);
-    padding:1rem 1.2rem;
-    text-align:left;
-    border-bottom:1px solid var(--border);
-  }
-  td {
-    padding:0.9rem 1.2rem;
-    border-bottom:1px solid rgba(0,255,231,0.05);
-    color:var(--text);
-    vertical-align:top;
-  }
-  tr:last-child td { border-bottom:none; }
-  tr:hover td { background:rgba(0,255,231,0.03); }
-  .cost-val { font-family:'IBM Plex Mono',monospace; color:var(--accent2); font-weight:600; }
-  .cost-win { color:var(--beginner); font-weight:600; }
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
 
-  /* VISUAL DIAGRAMS */
-  .diagram-box {
-    background:rgba(0,0,0,0.5);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:2rem;
-    margin:2rem 0;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.8rem;
-    line-height:2;
-    position:relative;
-    overflow:hidden;
-  }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
 
-  .diagram-box::after {
-    content:'';
-    position:absolute;
-    top:-50%; left:-50%; width:200%; height:200%;
-    background: radial-gradient(ellipse at center, rgba(0,255,231,0.03) 0%, transparent 70%);
-    pointer-events:none;
-  }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.2);
+        }
 
-  .d-site { color:var(--gold); font-weight:600; }
-  .d-op { color:var(--accent); }
-  .d-rel { color:var(--accent2); }
-  .d-result { color:var(--beginner); }
-  .d-arrow { color:var(--dim); }
-  .d-comment { color:var(--dim); font-style:italic; }
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
 
-  /* LAYERS VISUAL */
-  .layers-visual {
-    display:flex;
-    flex-direction:column;
-    gap:0;
-    max-width:700px;
-    margin:2rem auto;
-  }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
 
-  .layer {
-    padding:1.2rem 2rem;
-    border:1px solid var(--border);
-    position:relative;
-    transition:all 0.3s;
-    cursor:default;
-  }
-  .layer:first-child { border-radius:12px 12px 0 0; }
-  .layer:last-child { border-radius:0 0 12px 12px; }
-  .layer:not(:last-child) { border-bottom:none; }
-  .layer:hover { background:rgba(0,255,231,0.05); transform:scaleX(1.01); }
+        .card-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
 
-  .layer-num {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.6rem;
-    color:var(--dim);
-    letter-spacing:0.2em;
-    margin-bottom:0.3rem;
-  }
-  .layer-name {
-    font-family:'Orbitron',monospace;
-    font-size:0.9rem;
-    font-weight:700;
-    color:#fff;
-  }
-  .layer-input {
-    font-size:0.78rem;
-    color:var(--dim);
-    margin-top:0.3rem;
-  }
-  .layer-arrow {
-    text-align:center;
-    color:var(--accent);
-    font-size:1.2rem;
-    padding:0.3rem 0;
-    opacity:0.5;
-  }
+        /* Code Block */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            border-left: 4px solid var(--primary);
+            position: relative;
+            overflow-x: auto;
+        }
 
-  /* ACCORDION */
-  .accordion { margin:1rem 0; }
-  .accordion-item {
-    border:1px solid var(--border);
-    border-radius:8px;
-    margin-bottom:0.8rem;
-    overflow:hidden;
-    transition:border-color 0.3s;
-  }
-  .accordion-item:hover { border-color:rgba(0,255,231,0.3); }
-  .accordion-item.open { border-color:var(--accent); }
+        .code-block .keyword { color: #ff79c6; }
+        .code-block .function { color: #8be9fd; }
+        .code-block .string { color: #f1fa8c; }
+        .code-block .comment { color: #6272a4; }
 
-  .accordion-header {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:1rem 1.5rem;
-    cursor:pointer;
-    background:rgba(0,0,0,0.3);
-  }
-  .accordion-header h4 {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.85rem;
-    color:#fff;
-    display:flex; align-items:center; gap:1rem;
-  }
-  .accordion-toggle {
-    color:var(--accent);
-    font-size:1.2rem;
-    font-weight:300;
-    transition:transform 0.3s;
-  }
-  .accordion-item.open .accordion-toggle { transform:rotate(45deg); }
-  .accordion-body {
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 0.4s ease;
-    background:rgba(0,0,0,0.2);
-  }
-  .accordion-item.open .accordion-body { max-height:600px; }
-  .accordion-body-inner {
-    padding:1.2rem 1.5rem;
-    font-size:0.85rem;
-    color:var(--dim);
-    line-height:1.8;
-  }
-  .accordion-body-inner strong { color:var(--text); }
-  .accordion-body-inner code {
-    font-family:'IBM Plex Mono',monospace;
-    background:rgba(0,255,231,0.08);
-    color:var(--accent);
-    padding:0.1em 0.4em;
-    border-radius:4px;
-    font-size:0.9em;
-  }
+        /* Tables */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
 
-  /* COMPLEXITY TABLE */
-  .complexity-grid {
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-    gap:1rem;
-    margin:2rem 0;
-  }
-  .complexity-card {
-    background:rgba(0,0,0,0.4);
-    border:1px solid var(--border);
-    border-radius:8px;
-    padding:1rem;
-    text-align:center;
-  }
-  .complexity-op {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:1rem;
-    color:var(--accent);
-    margin-bottom:0.5rem;
-  }
-  .complexity-label { font-size:0.75rem; color:var(--dim); margin-bottom:0.3rem; }
-  .complexity-val {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.8rem;
-    font-weight:600;
-    padding:0.3rem 0.6rem;
-    border-radius:4px;
-    display:inline-block;
-    margin:0.2rem;
-  }
-  .cv-low { background:rgba(34,197,94,0.15); color:var(--beginner); }
-  .cv-med { background:rgba(245,158,11,0.15); color:var(--intermediate); }
-  .cv-high { background:rgba(239,68,68,0.15); color:var(--advanced); }
+        .styled-table th {
+            background: var(--primary);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
 
-  /* SQL BLOCK */
-  .sql-block {
-    background:rgba(0,0,0,0.6);
-    border:1px solid rgba(0,255,231,0.2);
-    border-left:3px solid var(--accent);
-    border-radius:0 8px 8px 0;
-    padding:1.2rem 1.5rem;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.82rem;
-    line-height:1.7;
-    margin:1rem 0;
-    overflow-x:auto;
-  }
-  .kw { color:#a855f7; font-weight:600; }
-  .str { color:var(--accent2); }
-  .cmt { color:var(--dim); font-style:italic; }
-  .attr { color:var(--accent); }
+        .styled-table td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-  /* ROADMAP TIMELINE */
-  .roadmap-timeline {
-    position:relative;
-    padding-left:3rem;
-    margin:2rem 0;
-  }
-  .roadmap-timeline::before {
-    content:'';
-    position:absolute; left:0; top:0; bottom:0;
-    width:2px;
-    background: linear-gradient(to bottom, var(--beginner), var(--intermediate), var(--advanced));
-  }
+        .styled-table tr:hover td {
+            background: rgba(99, 102, 241, 0.1);
+        }
 
-  .timeline-item {
-    position:relative;
-    margin-bottom:2.5rem;
-    padding-left:1rem;
-  }
-  .timeline-dot {
-    position:absolute; left:-2.5rem; top:0.5rem;
-    width:16px; height:16px; border-radius:50%;
-    border:2px solid;
-    background:var(--bg);
-  }
-  .timeline-item h3 {
-    font-family:'Orbitron',monospace;
-    font-size:0.9rem;
-    color:#fff;
-    margin-bottom:0.5rem;
-  }
-  .timeline-item p { font-size:0.85rem; color:var(--dim); line-height:1.7; }
+        /* Lists */
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
 
-  /* OPTIMIZER STRATEGY */
-  .strategy-grid {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:1.5rem;
-    margin:2rem 0;
-  }
-  @media(max-width:600px) { .strategy-grid { grid-template-columns:1fr; } }
-  .strategy-card {
-    background:rgba(0,0,0,0.4);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:1.5rem;
-  }
-  .strategy-card h4 {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.8rem;
-    letter-spacing:0.1em;
-    color:var(--accent);
-    margin-bottom:0.8rem;
-    text-transform:uppercase;
-  }
-  .strategy-card p { font-size:0.83rem; color:var(--dim); line-height:1.7; }
-  .pro { color:var(--beginner); font-weight:600; }
-  .con { color:var(--advanced); font-weight:600; }
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
 
-  /* DIVIDER */
-  .divider {
-    border:none;
-    border-top:1px solid var(--border);
-    margin:3rem 0;
-    position:relative;
-  }
-  .divider::after {
-    content:attr(data-text);
-    position:absolute; top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    background:var(--bg);
-    padding:0 1rem;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.65rem;
-    letter-spacing:0.3em;
-    color:var(--dim);
-    text-transform:uppercase;
-    white-space:nowrap;
-  }
+        .feature-list li:hover {
+            transform: translateX(10px);
+            border-color: var(--secondary);
+        }
 
-  /* QUIZ BOX */
-  .quiz-section {
-    background:rgba(168,85,247,0.05);
-    border:1px solid rgba(168,85,247,0.2);
-    border-radius:16px;
-    padding:2.5rem;
-    margin:3rem 0;
-  }
-  .quiz-section h3 {
-    font-family:'Orbitron',monospace;
-    font-size:1.1rem;
-    color:var(--accent3);
-    margin-bottom:1.5rem;
-  }
-  .quiz-q { margin-bottom:1.5rem; }
-  .quiz-q p { font-size:0.9rem; color:var(--text); margin-bottom:0.8rem; font-weight:600; }
-  .quiz-options { display:flex; flex-wrap:wrap; gap:0.6rem; }
-  .quiz-opt {
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.75rem;
-    padding:0.4rem 1rem;
-    border:1px solid var(--border);
-    border-radius:2rem;
-    background:transparent;
-    color:var(--dim);
-    cursor:pointer;
-    transition:all 0.2s;
-  }
-  .quiz-opt:hover { border-color:var(--accent3); color:var(--accent3); }
-  .quiz-opt.correct { border-color:var(--beginner); background:rgba(34,197,94,0.15); color:var(--beginner); }
-  .quiz-opt.wrong { border-color:var(--advanced); background:rgba(239,68,68,0.15); color:var(--advanced); }
+        .feature-list li .icon {
+            font-size: 1.5rem;
+        }
 
-  /* FOOTER */
-  footer {
-    position:relative; z-index:1;
-    text-align:center;
-    padding:3rem 2rem;
-    border-top:1px solid var(--border);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.72rem;
-    color:var(--dim);
-    letter-spacing:0.1em;
-  }
-  footer span { color:var(--accent); }
+        /* Flow Diagram */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
 
-  /* ANIMATIONS */
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
-  @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(0,255,231,0.1)} 50%{box-shadow:0 0 40px rgba(0,255,231,0.3)} }
-  @keyframes scanline {
-    from { transform:translateY(-100%); }
-    to   { transform:translateY(100vh); }
-  }
+        .flow-item {
+            background: var(--bg-card);
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: 2px solid var(--primary);
+            text-align: center;
+            min-width: 140px;
+            transition: all 0.3s ease;
+        }
 
-  .scanline {
-    position:fixed; top:0; left:0; right:0;
-    height:2px;
-    background:linear-gradient(to right, transparent, rgba(0,255,231,0.15), transparent);
-    pointer-events:none; z-index:50;
-    animation: scanline 6s linear infinite;
-  }
+        .flow-item:hover {
+            transform: scale(1.1);
+            background: rgba(99, 102, 241, 0.2);
+        }
 
-  /* REVEAL */
-  .reveal {
-    opacity:0;
-    transform:translateY(40px);
-    transition:all 0.7s cubic-bezier(0.23,1,0.32,1);
-  }
-  .reveal.visible { opacity:1; transform:none; }
+        .flow-arrow {
+            font-size: 1.8rem;
+            color: var(--secondary);
+            animation: pulse-arrow 1.5s infinite;
+        }
 
-  /* HIGHLIGHT BOX */
-  .highlight-box {
-    background:rgba(0,255,231,0.04);
-    border:1px solid var(--border);
-    border-radius:8px;
-    padding:1.2rem 1.5rem;
-    margin:1.5rem 0;
-    font-size:0.88rem;
-    line-height:1.7;
-    color:var(--text);
-  }
-  .highlight-box strong { color:var(--accent); }
+        @keyframes pulse-arrow {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+        }
 
-  /* HEURISTICS LIST */
-  .heuristic-list { list-style:none; }
-  .heuristic-list li {
-    padding:0.6rem 0;
-    border-bottom:1px solid rgba(0,255,231,0.05);
-    font-size:0.87rem;
-    color:var(--dim);
-    display:flex; gap:1rem; align-items:flex-start;
-  }
-  .heuristic-list li:last-child { border-bottom:none; }
-  .heuristic-list li::before {
-    content:attr(data-n);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:0.7rem;
-    color:var(--accent);
-    min-width:24px;
-    margin-top:2px;
-  }
-  .heuristic-list li strong { color:var(--text); }
+        /* Tree Structure */
+        .tree {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+        }
 
-  /* PROGRESS */
-  .progress-track {
-    position:fixed; top:60px; left:0; right:0;
-    height:3px; z-index:99;
-  }
-  .progress-bar {
-    height:100%;
-    background:linear-gradient(90deg, var(--beginner), var(--intermediate), var(--advanced));
-    width:0%;
-    transition:width 0.2s;
-  }
+        .tree-node {
+            background: var(--bg-card);
+            padding: 15px 30px;
+            border-radius: 10px;
+            margin: 5px;
+            border: 2px solid var(--primary);
+            transition: all 0.3s ease;
+            position: relative;
+        }
 
-  /* SCROLL TO TOP */
-  .scroll-top {
-    position:fixed; bottom:2rem; right:2rem;
-    width:44px; height:44px;
-    background:rgba(0,255,231,0.1);
-    border:1px solid var(--border);
-    border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    cursor:pointer; z-index:200;
-    color:var(--accent); font-size:1.2rem;
-    transition:all 0.3s;
-    opacity:0;
-  }
-  .scroll-top.visible { opacity:1; }
-  .scroll-top:hover { background:rgba(0,255,231,0.2); transform:translateY(-3px); }
+        .tree-node.highlight {
+            border-color: var(--accent);
+            background: rgba(245, 158, 11, 0.2);
+        }
 
-</style>
+        .tree-level {
+            display: flex;
+            gap: 20px;
+            margin: 5px 0;
+        }
+
+        .tree-connector {
+            width: 2px;
+            height: 30px;
+            background: var(--primary);
+            margin: 0 auto;
+        }
+
+        /* Comparison Table */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .comparison-card {
+            padding: 30px;
+            border-radius: 16px;
+            border: 2px solid;
+        }
+
+        .comparison-card.centralized {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .comparison-card.distributed {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .comparison-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .comparison-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .comparison-list li {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Progress Animation */
+        .cost-bar {
+            height: 25px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .cost-bar .fill {
+            height: 100%;
+            border-radius: 12px;
+            width: 0;
+            transition: width 1.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .cost-bar.cpu .fill { background: linear-gradient(90deg, var(--secondary), #0ea5e9); }
+        .cost-bar.io .fill { background: linear-gradient(90deg, var(--warning), #f97316); }
+        .cost-bar.comms .fill { background: linear-gradient(90deg, var(--danger), #f43f5e); }
+
+        /* Slide Number Badge */
+        .slide-number {
+            position: absolute;
+            top: 30px;
+            right: 60px;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border: 2px solid var(--primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide { padding: 40px 30px; }
+            .slide-title { font-size: 2rem; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Special Animations */
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+        }
+
+        @keyframes slide-up {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes scale-in {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes typewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        @keyframes blink {
+            0%, 100% { border-color: var(--primary); }
+            50% { border-color: transparent; }
+        }
+
+        .glow-effect { animation: glow 2s infinite; }
+        .slide-up { animation: slide-up 0.6s ease; }
+        .scale-in { animation: scale-in 0.5s ease; }
+    </style>
 </head>
 <body>
+    <!-- Background Animation -->
+    <div class="bg-animation" id="bgAnimation"></div>
 
-<div class="cursor" id="cursor"></div>
-<div class="cursor-ring" id="cursor-ring"></div>
-<div class="scanline"></div>
-<div class="progress-track"><div class="progress-bar" id="progress"></div></div>
-<canvas id="canvas3d"></canvas>
+    <!-- Progress Bar -->
+    <div class="progress-bar" id="progressBar"></div>
 
-<nav>
-  <div class="nav-logo">⬡ DQP Roadmap</div>
-  <ul class="nav-links">
-    <li><a href="#beginner">Beginner</a></li>
-    <li><a href="#intermediate">Intermediate</a></li>
-    <li><a href="#advanced">Advanced</a></li>
-    <li><a href="#calculator">Calculator</a></li>
-    <li><a href="#cheatsheet">Cheatsheet</a></li>
-    <li><a href="#quiz">Quiz</a></li>
-  </ul>
-</nav>
+    <!-- Slide Container -->
+    <div class="presentation" id="presentation">
+        <div class="slides-container" id="slidesContainer">
 
-<main>
+            <!-- SLIDE 1: Title -->
+            <div class="slide active" data-slide="1">
+                <div class="slide-number">1</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <span class="section-badge">Distributed Database Systems</span>
+                    </div>
+                    <div class="animate-in delay-2">
+                        <h1 class="slide-title" style="font-size: 3.5rem;">Distributed Query Processing</h1>
+                    </div>
+                    <div class="animate-in delay-3">
+                        <p class="slide-subtitle">Efficiently executing queries across multiple distributed data sites</p>
+                    </div>
+                    <div class="animate-in delay-4 flow-diagram">
+                        <div class="flow-item">🏦 Banking</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">✈️ Airlines</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">🛒 E-Commerce</div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item">☁️ Cloud DB</div>
+                    </div>
+                    <div class="animate-in delay-5" style="margin-top: 40px; text-align: center; color: var(--text-muted);">
+                        <p style="font-size: 1.1rem;">Presented By: <strong style="color: var(--primary);">Mohammad Ibrahim Pavel</strong></p>
+                        <p>Department of CSE | Bangladesh Open University</p>
+                    </div>
+                </div>
+            </div>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="hero-badge">📡 Complete Learning Roadmap</div>
-    <h1>Distributed Query<br>Processing</h1>
-    <p class="hero-sub">From SQL basics to cost-optimized distributed execution plans — a structured journey through query decomposition, data localization, and global optimization.</p>
-    <div class="roadmap-pills">
-      <a href="#beginner" class="pill pill-beginner">🟢 Beginner</a>
-      <a href="#intermediate" class="pill pill-intermediate">🟡 Intermediate</a>
-      <a href="#advanced" class="pill pill-advanced">🔴 Advanced</a>
-    </div>
-    <div class="scroll-hint">↓ scroll to begin</div>
-  </section>
+            <!-- SLIDE 2: What is DQP? -->
+            <div class="slide" data-slide="2">
+                <div class="slide-number">2</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">What is Distributed Query Processing?</h2>
+                    </div>
+                    <div class="animate-in delay-2" style="max-width: 900px; margin: 0 auto 30px; text-align: center;">
+                        <p style="font-size: 1.2rem; line-height: 1.8; color: var(--text-secondary);">
+                            Distributed Query Processing is the process of executing database queries in a distributed database system where data is stored across <strong style="color: var(--primary);">multiple network-connected sites</strong>.
+                        </p>
+                    </div>
+                    <div class="animate-in delay-3 flow-diagram">
+                        <div class="flow-item glow-effect">
+                            <div style="font-size: 2rem;">📤</div>
+                            <div><strong>Query</strong></div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="border-color: var(--accent);">
+                            <div style="font-size: 2rem;">✂️</div>
+                            <div><strong>Subqueries</strong></div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="display: flex; gap: 10px;">
+                            <div style="border-color: var(--success); padding: 10px 15px; border-radius: 8px; border: 2px solid; text-align: center;">
+                                <div>🖥️ Site A</div>
+                            </div>
+                            <div style="border-color: var(--warning); padding: 10px 15px; border-radius: 8px; border: 2px solid; text-align: center;">
+                                <div>🖥️ Site B</div>
+                            </div>
+                            <div style="border-color: var(--danger); padding: 10px 15px; border-radius: 8px; border: 2px solid; text-align: center;">
+                                <div>🖥️ Site C</div>
+                            </div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="border-color: var(--success);">
+                            <div style="font-size: 2rem;">✅</div>
+                            <div><strong>Final Result</strong></div>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-4" style="margin-top: 30px; background: var(--bg-card); padding: 20px; border-radius: 12px; max-width: 700px; margin-left: auto; margin-right: auto;">
+                        <p style="text-align: center;"><strong>💡 Simple Explanation:</strong></p>
+                        <p style="color: var(--text-secondary); margin-top: 10px; text-align: center;">
+                            Employee data in Dhaka + Department data in Chittagong = System accesses both → processes → combines results
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-  <!-- OVERVIEW -->
-  <section id="overview" class="reveal">
-    <div class="section-label label-core">// Foundation</div>
-    <h2 class="section-title">What is Query Processing?</h2>
-    <p class="section-desc">Query processing is the bridge between what you ask (high-level declarative SQL) and how the database actually retrieves data (low-level procedural operations).</p>
+            <!-- SLIDE 3: Distributed Database -->
+            <div class="slide" data-slide="3">
+                <div class="slide-number">3</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">What is a Distributed Database?</h2>
+                    </div>
+                    <div class="animate-in delay-2" style="max-width: 900px; margin: 0 auto 30px; text-align: center;">
+                        <p style="font-size: 1.1rem; line-height: 1.8; color: var(--text-secondary);">
+                            A collection of logically related databases distributed over different physical locations and connected through a communication network. To the user, it appears as a <strong style="color: var(--secondary);">single database</strong>.
+                        </p>
+                    </div>
+                    <div class="cards-grid">
+                        <div class="card animate-in delay-3">
+                            <div class="card-icon">🗄️</div>
+                            <div class="card-title">Data Distribution</div>
+                            <div class="card-text">Data is stored in different physical sites across the network</div>
+                        </div>
+                        <div class="card animate-in delay-4">
+                            <div class="card-icon">🌐</div>
+                            <div class="card-title">Network Communication</div>
+                            <div class="card-text">Sites communicate through a reliable communication network</div>
+                        </div>
+                        <div class="card animate-in delay-5">
+                            <div class="card-icon">🏢</div>
+                            <div class="card-title">Local Autonomy</div>
+                            <div class="card-text">Each site can manage its own data independently</div>
+                        </div>
+                        <div class="card animate-in delay-6">
+                            <div class="card-icon">✨</div>
+                            <div class="card-title">Transparency</div>
+                            <div class="card-text">Users don't need to know where data is physically stored</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">🗣️</div>
-        <span class="card-tag tag-b">beginner</span>
-        <h3>Query Language</h3>
-        <p>SQL is a <strong>tuple calculus</strong> language. Users write <em>what</em> they want — the processor figures out <em>how</em> to get it.</p>
-        <div class="card-formula">
-Tuple Calculus:  { t | F(t) }
-Where t = tuple variable
-      F(t) = well-formed formula
+            <!-- SLIDE 4: Why DQP? -->
+            <div class="slide" data-slide="4">
+                <div class="slide-number">4</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Why DQP is Necessary</h2>
+                    </div>
+                    <div class="comparison-grid">
+                        <div class="comparison-card centralized animate-in delay-2">
+                            <h3>❌ Without DQP</h3>
+                            <ul class="comparison-list">
+                                <li>⚠️ High network traffic</li>
+                                <li>🐌 Slow query execution</li>
+                                <li>📉 Decreased system performance</li>
+                                <li>💸 Unnecessary data transfer</li>
+                                <li>🔄 Poor resource utilization</li>
+                            </ul>
+                        </div>
+                        <div class="comparison-card distributed animate-in delay-3">
+                            <h3>✅ With DQP</h3>
+                            <ul class="comparison-list">
+                                <li>✅ Reduces unnecessary data transfer</li>
+                                <li>⚡ Improves response time</li>
+                                <li>🎯 Optimizes resource usage</li>
+                                <li>🚀 Supports parallel execution</li>
+                                <li>📈 Improves scalability</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-Domain Calculus:
-{ x,y | EMP(x,y,"Manager") }
-→ position-sensitive variables
+            <!-- SLIDE 5: Objectives -->
+            <div class="slide" data-slide="5">
+                <div class="slide-number">5</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Objectives of DQP</h2>
+                    </div>
+                    <ul class="feature-list" style="max-width: 800px; margin: 0 auto;">
+                        <li class="animate-in delay-2">
+                            <span class="icon">💰</span>
+                            <div>
+                                <strong style="color: var(--primary);">Minimize Communication Cost</strong><br>
+                                <span style="color: var(--text-secondary);">Network communication is expensive; DQP transfers only necessary data</span>
+                            </div>
+                        </li>
+                        <li class="animate-in delay-3">
+                            <span class="icon">⚡</span>
+                            <div>
+                                <strong style="color: var(--secondary);">Faster Query Execution</strong><br>
+                                <span style="color: var(--text-secondary);">Queries processed in parallel at multiple sites reduces execution time</span>
+                            </div>
+                        </li>
+                        <li class="animate-in delay-4">
+                            <span class="icon">🔄</span>
+                            <div>
+                                <strong style="color: var(--warning);">Better Resource Utilization</strong><br>
+                                <span style="color: var(--text-secondary);">CPU, memory, and storage resources used efficiently across sites</span>
+                            </div>
+                        </li>
+                        <li class="animate-in delay-5">
+                            <span class="icon">📈</span>
+                            <div>
+                                <strong style="color: var(--success);">Scalability & Reliability</strong><br>
+                                <span style="color: var(--text-secondary);">System handles increasing users; failure of one site doesn't stop processing</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SLIDE 6: Architecture -->
+            <div class="slide" data-slide="6">
+                <div class="slide-number">6</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Architecture of DQP</h2>
+                    </div>
+                    <div class="flow-diagram" style="gap: 10px;">
+                        <div class="flow-item animate-in delay-2" style="min-width: 120px; font-size: 0.9rem;">
+                            <div style="font-size: 1.5rem;">🔍</div>
+                            <strong>Query Parser</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Syntax check</span>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item animate-in delay-3" style="min-width: 120px; font-size: 0.9rem;">
+                            <div style="font-size: 1.5rem;">✂️</div>
+                            <strong>Decomposer</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Relational algebra</span>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item animate-in delay-4" style="min-width: 120px; font-size: 0.9rem;">
+                            <div style="font-size: 1.5rem;">📍</div>
+                            <strong>Localizer</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Find data location</span>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item animate-in delay-5" style="min-width: 120px; font-size: 0.9rem; border-color: var(--accent);">
+                            <div style="font-size: 1.5rem;">🧠</div>
+                            <strong>Optimizer</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Best strategy</span>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item animate-in delay-6" style="min-width: 120px; font-size: 0.9rem;">
+                            <div style="font-size: 1.5rem;">⚙️</div>
+                            <strong>Execution</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Run subqueries</span>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-7" style="margin-top: 30px; background: var(--bg-card); padding: 20px; border-radius: 12px; max-width: 800px; margin-left: auto; margin-right: auto;">
+                        <p style="text-align: center; color: var(--text-secondary);">
+                            <strong>Flow:</strong> SQL Query → Parser → Decomposer → Localizer → Optimizer → Execution Engine → Final Result
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 7: Costs -->
+            <div class="slide" data-slide="7">
+                <div class="slide-number">7</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Types of Costs in DQP</h2>
+                    </div>
+                    <div style="max-width: 800px; margin: 30px auto; width: 100%;">
+                        <div class="animate-in delay-2" style="margin: 20px 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="display: flex; align-items: center; gap: 10px;">🖥️ <strong>CPU Cost</strong></span>
+                                <span style="color: var(--text-muted);">Processing cost</span>
+                            </div>
+                            <div class="cost-bar cpu">
+                                <div class="fill" data-width="35%">Moderate</div>
+                            </div>
+                        </div>
+                        <div class="animate-in delay-3" style="margin: 20px 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="display: flex; align-items: center; gap: 10px;">💾 <strong>I/O Cost</strong></span>
+                                <span style="color: var(--text-muted);">Disk read/write</span>
+                            </div>
+                            <div class="cost-bar io">
+                                <div class="fill" data-width="50%">Medium</div>
+                            </div>
+                        </div>
+                        <div class="animate-in delay-4" style="margin: 20px 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="display: flex; align-items: center; gap: 10px;">🌐 <strong>Communication Cost</strong></span>
+                                <span style="color: var(--danger); font-weight: 700;">⚠️ MOST EXPENSIVE</span>
+                            </div>
+                            <div class="cost-bar comms">
+                                <div class="fill" data-width="90%">Very High</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-5" style="text-align: center; margin-top: 20px; background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 12px; border: 1px solid var(--danger);">
+                        <strong>🎯 DQP Main Goal:</strong> Minimize communication cost by reducing network data transfer
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 8: 5 Steps -->
+            <div class="slide" data-slide="8">
+                <div class="slide-number">8</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Major Steps of DQP</h2>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 15px; margin: 40px 0; flex-wrap: wrap;">
+                        <div class="animate-in delay-2" style="text-align: center;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 10px;">1</div>
+                            <strong>Query<br>Decomposition</strong>
+                        </div>
+                        <div class="flow-arrow" style="align-self: center;">→</div>
+                        <div class="animate-in delay-3" style="text-align: center;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 10px;">2</div>
+                            <strong>Data<br>Localization</strong>
+                        </div>
+                        <div class="flow-arrow" style="align-self: center;">→</div>
+                        <div class="animate-in delay-4" style="text-align: center;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 10px;">3</div>
+                            <strong>Global<br>Optimization</strong>
+                        </div>
+                        <div class="flow-arrow" style="align-self: center;">→</div>
+                        <div class="animate-in delay-5" style="text-align: center;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--warning); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 10px;">4</div>
+                            <strong>Local<br>Optimization</strong>
+                        </div>
+                        <div class="flow-arrow" style="align-self: center;">→</div>
+                        <div class="animate-in delay-6" style="text-align: center;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; margin: 0 auto 10px;">5</div>
+                            <strong>Query<br>Execution</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 9: Query Decomposition -->
+            <div class="slide" data-slide="9">
+                <div class="slide-number">9</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Step 1: Query Decomposition</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 30px; align-items: center; margin: 30px 0;">
+                        <div class="animate-in delay-2">
+                            <h3 style="color: var(--primary); margin-bottom: 10px;">SQL Query</h3>
+                            <div class="code-block">
+                                <span class="keyword">SELECT</span> Name<br>
+                                <span class="keyword">FROM</span> Employee<br>
+                                <span class="keyword">WHERE</span> Salary > <span class="string">50000</span>;
+                            </div>
+                        </div>
+                        <div class="animate-in delay-3" style="font-size: 3rem;">→</div>
+                        <div class="animate-in delay-4">
+                            <h3 style="color: var(--secondary); margin-bottom: 10px;">Relational Algebra</h3>
+                            <div class="code-block" style="border-left-color: var(--secondary);">
+                                σ<sub>Salary>50000</sub>(Employee)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-5" style="margin-top: 20px;">
+                        <ul class="feature-list">
+                            <li><span class="icon">✅</span> Analyze SQL syntax</li>
+                            <li><span class="icon">✅</span> Check semantics</li>
+                            <li><span class="icon">✅</span> Transform to relational algebra</li>
+                            <li><span class="icon">✅</span> Remove redundant operations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 10: Data Localization -->
+            <div class="slide" data-slide="10">
+                <div class="slide-number">10</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Step 2: Data Localization</h2>
+                    </div>
+                    <p class="animate-in delay-2 slide-subtitle">Identifies which site contains required data and which fragments are needed</p>
+                    <table class="styled-table animate-in delay-3">
+                        <thead>
+                            <tr>
+                                <th>Table</th>
+                                <th>Site Location</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Employee</td>
+                                <td><span style="color: var(--success);">📍 Site A</span></td>
+                            </tr>
+                            <tr>
+                                <td>Department</td>
+                                <td><span style="color: var(--secondary);">📍 Site B</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="animate-in delay-4" style="margin-top: 20px; background: var(--bg-card); padding: 20px; border-radius: 12px;">
+                        <p style="text-align: center;">When query requires both tables, system determines <strong style="color: var(--primary);">how and where</strong> data should be accessed</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 11: Global Optimization -->
+            <div class="slide" data-slide="11">
+                <div class="slide-number">11</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Step 3: Global Query Optimization</h2>
+                    </div>
+                    <div style="max-width: 900px; margin: 0 auto;">
+                        <p class="animate-in delay-2" style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">Determines the best overall execution plan</p>
+                        <div class="cards-grid">
+                            <div class="card animate-in delay-3">
+                                <div class="card-icon">🎯</div>
+                                <div class="card-title">Site Selection</div>
+                                <div class="card-text">Decides which site executes which operation</div>
+                            </div>
+                            <div class="card animate-in delay-4">
+                                <div class="card-icon">📦</div>
+                                <div class="card-title">Data vs Query</div>
+                                <div class="card-text">Whether data moves or query moves to data site</div>
+                            </div>
+                            <div class="card animate-in delay-5">
+                                <div class="card-icon">🔗</div>
+                                <div class="card-title">Join Strategy</div>
+                                <div class="card-text">Selects optimal join method for distributed data</div>
+                            </div>
+                        </div>
+                        <div class="animate-in delay-6" style="margin-top: 30px; text-align: center;">
+                            <strong style="color: var(--accent);">Main Goal:</strong> Reduce communication cost, network traffic, and execution time
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 12: Local Optimization -->
+            <div class="slide" data-slide="12">
+                <div class="slide-number">12</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Step 4: Local Query Optimization</h2>
+                    </div>
+                    <p class="animate-in delay-2 slide-subtitle">Each site independently optimizes its own subquery</p>
+                    <div class="cards-grid" style="max-width: 800px;">
+                        <div class="card animate-in delay-3">
+                            <div class="card-icon">🔍</div>
+                            <div class="card-title">Index Scanning</div>
+                            <div class="card-text">Use indexes to quickly locate data</div>
+                        </div>
+                        <div class="card animate-in delay-4">
+                            <div class="card-icon">#️⃣</div>
+                            <div class="card-title">Hash Join</div>
+                            <div class="card-text">Efficient joining using hash functions</div>
+                        </div>
+                        <div class="card animate-in delay-5">
+                            <div class="card-icon">📊</div>
+                            <div class="card-title">Sorting Optimization</div>
+                            <div class="card-text">Optimize sort operations for faster results</div>
+                        </div>
+                        <div class="card animate-in delay-6">
+                            <div class="card-icon">💾</div>
+                            <div class="card-title">Query Caching</div>
+                            <div class="card-text">Store results to avoid redundant processing</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 13: Query Execution -->
+            <div class="slide" data-slide="13">
+                <div class="slide-number">13</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Step 5: Query Execution</h2>
+                    </div>
+                    <div class="flow-diagram animate-in delay-2">
+                        <div class="flow-item">
+                            <div style="font-size: 2rem;">🖥️</div>
+                            <strong>Site A</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Execute subquery</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="border-color: var(--accent);">
+                            <div style="font-size: 2rem;">📦</div>
+                            <strong>Site B</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Execute subquery</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="border-color: var(--warning);">
+                            <div style="font-size: 2rem;">🔄</div>
+                            <strong>Transfer</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Intermediate results</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-item" style="border-color: var(--success);">
+                            <div style="font-size: 2rem;">✅</div>
+                            <strong>Final Result</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Assembled & returned</div>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-3" style="margin-top: 30px; background: var(--bg-card); padding: 20px; border-radius: 12px; border-left: 4px solid var(--accent);">
+                        <strong>⚡ Important:</strong> Efficient communication between sites is essential for successful query execution
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 14: Real-Life Setup -->
+            <div class="slide" data-slide="14">
+                <div class="slide-number">14</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Real-Life Example Scenario</h2>
+                    </div>
+                    <p class="animate-in delay-2 slide-subtitle">A company stores data in two distributed servers</p>
+                    <div class="comparison-grid">
+                        <div class="comparison-card centralized animate-in delay-3">
+                            <h3>🏢 Site A</h3>
+                            <table class="styled-table" style="margin-top: 15px;">
+                                <thead><tr><th>Emp_ID</th><th>Name</th><th>Dept_ID</th></tr></thead>
+                                <tbody>
+                                    <tr><td>101</td><td>Rahim</td><td>D1</td></tr>
+                                    <tr><td>102</td><td>Karim</td><td>D2</td></tr>
+                                    <tr><td>103</td><td>Akash</td><td>D1</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="comparison-card distributed animate-in delay-4">
+                            <h3>🏢 Site B</h3>
+                            <table class="styled-table" style="margin-top: 15px;">
+                                <thead><tr><th>Dept_ID</th><th>Department</th><th>Location</th></tr></thead>
+                                <tbody>
+                                    <tr><td>D1</td><td>HR</td><td>Dhaka</td></tr>
+                                    <tr><td>D2</td><td>IT</td><td>Chittagong</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 15: Main Query -->
+            <div class="slide" data-slide="15">
+                <div class="slide-number">15</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Main SQL Query</h2>
+                    </div>
+                    <div class="animate-in delay-2 code-block" style="font-size: 1.1rem; padding: 30px;">
+                        <span class="keyword">SELECT</span> E.Name<br>
+                        <span class="keyword">FROM</span> Employee E, Department D<br>
+                        <span class="keyword">WHERE</span> E.Dept_ID = D.Dept_ID<br>
+                        &nbsp;&nbsp;<span class="keyword">AND</span> D.Location = <span class="string">'Dhaka'</span>;
+                    </div>
+                    <div class="animate-in delay-3" style="margin-top: 30px; background: var(--bg-card); padding: 25px; border-radius: 12px; max-width: 700px; margin-left: auto; margin-right: auto; text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">🎯</div>
+                        <strong style="font-size: 1.2rem;">Objective:</strong>
+                        <p style="color: var(--text-secondary); margin-top: 10px; font-size: 1.1rem;">Retrieve names of employees working in departments located in Dhaka</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 16: Step 1 -->
+            <div class="slide" data-slide="16">
+                <div class="slide-number">16</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Processing Step 1: Site B Query</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
+                        <div class="animate-in delay-2">
+                            <h3 style="color: var(--primary); margin-bottom: 15px;">📍 Query at Site B</h3>
+                            <div class="code-block">
+                                <span class="keyword">SELECT</span> Dept_ID<br>
+                                <span class="keyword">FROM</span> Department<br>
+                                <span class="keyword">WHERE</span> Location = <span class="string">'Dhaka'</span>;
+                            </div>
+                        </div>
+                        <div class="animate-in delay-3">
+                            <h3 style="color: var(--success); margin-bottom: 15px;">✅ Output</h3>
+                            <table class="styled-table">
+                                <thead><tr><th>Dept_ID</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong style="color: var(--accent);">D1</strong></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-4" style="margin-top: 20px; background: var(--bg-card); padding: 20px; border-radius: 12px; border-left: 4px solid var(--success);">
+                        <strong>💡 Key Benefit:</strong> Only D1 is sent to Site A instead of the whole Department table → Reduces communication cost
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 17: Step 2 -->
+            <div class="slide" data-slide="17">
+                <div class="slide-number">17</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Processing Step 2: Site A Query</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
+                        <div class="animate-in delay-2">
+                            <h3 style="color: var(--primary); margin-bottom: 15px;">📍 Query at Site A (after receiving D1)</h3>
+                            <div class="code-block">
+                                <span class="keyword">SELECT</span> Name<br>
+                                <span class="keyword">FROM</span> Employee<br>
+                                <span class="keyword">WHERE</span> Dept_ID = <span class="string">'D1'</span>;
+                            </div>
+                        </div>
+                        <div class="animate-in delay-3">
+                            <h3 style="color: var(--success); margin-bottom: 15px;">✅ Output</h3>
+                            <table class="styled-table">
+                                <thead><tr><th>Name</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Rahim</td></tr>
+                                    <tr><td>Akash</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 18: Final Result -->
+            <div class="slide" data-slide="18">
+                <div class="slide-number">18</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Final Result</h2>
+                    </div>
+                    <div class="animate-in delay-2" style="text-align: center; margin: 30px 0;">
+                        <div style="font-size: 3rem; margin-bottom: 20px;">🎉</div>
+                        <h3 style="color: var(--success); margin-bottom: 20px;">Query Execution Complete</h3>
+                        <table class="styled-table" style="max-width: 400px; margin: 0 auto;">
+                            <thead>
+                                <tr><th>Employee Name</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Rahim</td></tr>
+                                <tr><td>Akash</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="animate-in delay-3" style="margin-top: 30px; background: var(--bg-card); padding: 20px; border-radius: 12px; max-width: 700px; margin-left: auto; margin-right: auto;">
+                        <p style="text-align: center;">Employees working in Dhaka departments: <strong style="color: var(--primary);">Rahim & Akash</strong></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 19: Code Explanation -->
+            <div class="slide" data-slide="19">
+                <div class="slide-number">19</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Detailed Query Explanation</h2>
+                    </div>
+                    <div class="animate-in delay-2 code-block" style="margin-bottom: 30px;">
+                        <span class="keyword">SELECT</span> E.Name <span class="comment">→ Retrieve employee names</span><br>
+                        <span class="keyword">FROM</span> Employee E, Department D <span class="comment">→ Use both tables</span><br>
+                        <span class="keyword">WHERE</span> E.Dept_ID = D.Dept_ID <span class="comment">→ Join on Dept_ID</span><br>
+                        &nbsp;&nbsp;<span class="keyword">AND</span> D.Location = <span class="string">'Dhaka'</span> <span class="comment">→ Filter by location</span>
+                    </div>
+                    <div class="cards-grid">
+                        <div class="card animate-in delay-3">
+                            <div class="card-icon">📤</div>
+                            <div class="card-title">SELECT E.Name</div>
+                            <div class="card-text">Retrieve only the employee name column</div>
+                        </div>
+                        <div class="card animate-in delay-4">
+                            <div class="card-icon">📊</div>
+                            <div class="card-title">FROM Tables</div>
+                            <div class="card-text">E = Employee, D = Department</div>
+                        </div>
+                        <div class="card animate-in delay-5">
+                            <div class="card-icon">🔗</div>
+                            <div class="card-title">WHERE Join</div>
+                            <div class="card-text">Match employees with departments via Dept_ID</div>
+                        </div>
+                        <div class="card animate-in delay-6">
+                            <div class="card-icon">📍</div>
+                            <div class="card-title">AND Filter</div>
+                            <div class="card-text">Only include departments in Dhaka</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 20: Query Tree -->
+            <div class="slide" data-slide="20">
+                <div class="slide-number">20</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Query Tree Representation</h2>
+                    </div>
+                    <div class="tree animate-in delay-2">
+                        <div class="tree-node highlight">
+                            <strong>SELECT Name</strong>
+                        </div>
+                        <div class="tree-connector"></div>
+                        <div class="tree-node">
+                            <strong>JOIN</strong>
+                        </div>
+                        <div style="display: flex; gap: 50px; margin-top: 5px;">
+                            <div class="tree-connector" style="height: 20px; width: 100px; transform: translateX(-40px);"></div>
+                        </div>
+                        <div class="tree-level">
+                            <div class="tree-node">📊 Employee</div>
+                            <div class="tree-node highlight">
+                                📊 Department<br>
+                                <span style="font-size: 0.8rem; color: var(--accent);">Location='Dhaka'</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-3" style="margin-top: 30px; background: var(--bg-card); padding: 20px; border-radius: 12px;">
+                        <p style="text-align: center;"><strong>Execution Order:</strong> Filter Department → Join → Project Name</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 21: Semi-Join -->
+            <div class="slide" data-slide="21">
+                <div class="slide-number">21</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Semi-Join Technique</h2>
+                    </div>
+                    <p class="animate-in delay-2 slide-subtitle">Optimization method that reduces data transfer between sites</p>
+                    <div class="comparison-grid">
+                        <div class="comparison-card centralized animate-in delay-3">
+                            <h3>❌ Without Semi-Join</h3>
+                            <ul class="comparison-list">
+                                <li>📦 Full Department table sent to Site A</li>
+                                <li>🐌 Heavy network traffic (20 rows)</li>
+                                <li>💸 High communication cost</li>
+                            </ul>
+                        </div>
+                        <div class="comparison-card distributed animate-in delay-4">
+                            <h3>✅ With Semi-Join</h3>
+                            <ul class="comparison-list">
+                                <li>📤 Only matching Dept_IDs sent (2 values)</li>
+                                <li>⚡ Lightweight transfer (2 rows)</li>
+                                <li>💰 90% reduction in network load</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-5" style="margin-top: 20px; text-align: center;">
+                        <strong style="color: var(--success);">✅ Lower cost | ⚡ Faster execution | 📉 Reduced traffic</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 22: Query vs Data Shipping -->
+            <div class="slide" data-slide="22">
+                <div class="slide-number">22</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Query Shipping vs Data Shipping</h2>
+                    </div>
+                    <div class="comparison-grid">
+                        <div class="comparison-card centralized animate-in delay-2" style="border-color: var(--primary); background: rgba(99, 102, 241, 0.05);">
+                            <h3>📤 Query Shipping</h3>
+                            <p style="color: var(--text-secondary); margin: 15px 0;">Query is sent to the site where data exists</p>
+                            <ul class="comparison-list">
+                                <li>✅ Less data transfer</li>
+                                <li>✅ Processing done at data site</li>
+                                <li>✅ Small result returns</li>
+                            </ul>
+                            <div style="margin-top: 15px; text-align: center; font-size: 2rem;">📤 → 🗄️ → 📤</div>
+                        </div>
+                        <div class="comparison-card distributed animate-in delay-3" style="border-color: var(--secondary); background: rgba(6, 182, 212, 0.05);">
+                            <h3>🗄️ Data Shipping</h3>
+                            <p style="color: var(--text-secondary); margin: 15px 0;">Data is transferred to query site for processing</p>
+                            <ul class="comparison-list">
+                                <li>🔄 Data moves to user site</li>
+                                <li>📊 Good for complex local ops</li>
+                                <li>💡 Centralized processing</li>
+                            </ul>
+                            <div style="margin-top: 15px; text-align: center; font-size: 2rem;">🗄️ → 📤 → 💻</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 23: Parallel Processing -->
+            <div class="slide" data-slide="23">
+                <div class="slide-number">23</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Parallel Query Processing</h2>
+                    </div>
+                    <p class="animate-in delay-2 slide-subtitle">Different sites process subqueries simultaneously</p>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 30px 0; max-width: 800px; margin-left: auto; margin-right: auto;">
+                        <div class="card animate-in delay-3">
+                            <div class="card-icon">🖥️</div>
+                            <div class="card-title">Site A</div>
+                            <div class="card-text">Processes Employee table</div>
+                            <div style="margin-top: 10px; background: var(--bg-dark); padding: 5px; border-radius: 5px;">
+                                <div style="height: 8px; background: var(--success); border-radius: 4px; animation: fill-bar 2s infinite;"></div>
+                            </div>
+                        </div>
+                        <div class="card animate-in delay-4">
+                            <div class="card-icon">🖥️</div>
+                            <div class="card-title">Site B</div>
+                            <div class="card-text">Processes Department table</div>
+                            <div style="margin-top: 10px; background: var(--bg-dark); padding: 5px; border-radius: 5px;">
+                                <div style="height: 8px; background: var(--secondary); border-radius: 4px; animation: fill-bar 2.5s infinite;"></div>
+                            </div>
+                        </div>
+                        <div class="card animate-in delay-5">
+                            <div class="card-icon">🖥️</div>
+                            <div class="card-title">Site C</div>
+                            <div class="card-text">Processes Salary table</div>
+                            <div style="margin-top: 10px; background: var(--bg-dark); padding: 5px; border-radius: 5px;">
+                                <div style="height: 8px; background: var(--primary); border-radius: 4px; animation: fill-bar 1.8s infinite;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="animate-in delay-6" style="text-align: center; color: var(--success); font-size: 1.1rem;">
+                        ✅ Faster execution &nbsp;&nbsp; ✅ Better performance &nbsp;&nbsp; ✅ Better resource utilization
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 24: Advantages -->
+            <div class="slide" data-slide="24">
+                <div class="slide-number">24</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Advantages of DQP</h2>
+                    </div>
+                    <ul class="feature-list" style="max-width: 800px; margin: 0 auto;">
+                        <li class="animate-in delay-2">
+                            <span class="icon">⚡</span>
+                            <div><strong>Faster Query Execution</strong> — Parallel processing improves speed</div>
+                        </li>
+                        <li class="animate-in delay-3">
+                            <span class="icon">📈</span>
+                            <div><strong>Better Scalability</strong> — Supports large systems efficiently</div>
+                        </li>
+                        <li class="animate-in delay-4">
+                            <span class="icon">🔄</span>
+                            <div><strong>Efficient Resource Utilization</strong> — Resources used properly across sites</div>
+                        </li>
+                        <li class="animate-in delay-5">
+                            <span class="icon">🎯</span>
+                            <div><strong>Reduced Response Time</strong> — Users get results faster</div>
+                        </li>
+                        <li class="animate-in delay-6">
+                            <span class="icon">🛡️</span>
+                            <div><strong>Better Reliability</strong> — Single site failure doesn't stop system</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- SLIDE 25: Disadvantages -->
+            <div class="slide" data-slide="25">
+                <div class="slide-number">25</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Disadvantages of DQP</h2>
+                    </div>
+                    <div class="cards-grid">
+                        <div class="card animate-in delay-2" style="border-color: var(--danger);">
+                            <div class="card-icon">🧠</div>
+                            <div class="card-title" style="color: var(--danger);">Complex Optimization</div>
+                            <div class="card-text">Finding best execution plan is difficult and computationally expensive</div>
+                        </div>
+                        <div class="card animate-in delay-3" style="border-color: var(--warning);">
+                            <div class="card-icon">🌐</div>
+                            <div class="card-title" style="color: var(--warning);">High Network Dependency</div>
+                            <div class="card-text">System depends heavily on network performance and reliability</div>
+                        </div>
+                        <div class="card animate-in delay-4" style="border-color: var(--accent);">
+                            <div class="card-icon">🔄</div>
+                            <div class="card-title" style="color: var(--accent);">Synchronization Problems</div>
+                            <div class="card-text">Maintaining data consistency across sites is challenging</div>
+                        </div>
+                        <div class="card animate-in delay-5" style="border-color: #a855f7;">
+                            <div class="card-icon">🔒</div>
+                            <div class="card-title" style="color: #a855f7;">Security Issues</div>
+                            <div class="card-text">Data transfer over network creates security vulnerabilities</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 26: Challenges -->
+            <div class="slide" data-slide="26">
+                <div class="slide-number">26</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Major Challenges in DQP</h2>
+                    </div>
+                    <div class="cards-grid" style="max-width: 900px;">
+                        <div class="card animate-in delay-2">
+                            <div class="card-icon">📡</div>
+                            <div class="card-title">Communication Overhead</div>
+                            <div class="card-text">Network communication is expensive and can bottleneck performance</div>
+                        </div>
+                        <div class="card animate-in delay-3">
+                            <div class="card-icon">💥</div>
+                            <div class="card-title">Site Failure</div>
+                            <div class="card-text">Failure of one server may interrupt entire query execution</div>
+                        </div>
+                        <div class="card animate-in delay-4">
+                            <div class="card-icon">🧩</div>
+                            <div class="card-title">Data Fragmentation</div>
+                            <div class="card-text">Managing fragmented data across sites adds complexity</div>
+                        </div>
+                        <div class="card animate-in delay-5">
+                            <div class="card-icon">🔁</div>
+                            <div class="card-title">Distributed Deadlock</div>
+                            <div class="card-text">Transactions across multiple sites may cause deadlocks</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 27: Applications -->
+            <div class="slide" data-slide="27">
+                <div class="slide-number">27</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Real-World Applications</h2>
+                    </div>
+                    <div class="cards-grid">
+                        <div class="card animate-in delay-2">
+                            <div class="card-icon">🏦</div>
+                            <div class="card-title">Banking Systems</div>
+                            <div class="card-text">ATM and online banking with distributed transaction processing</div>
+                        </div>
+                        <div class="card animate-in delay-3">
+                            <div class="card-icon">✈️</div>
+                            <div class="card-title">Airline Reservations</div>
+                            <div class="card-text">Distributed ticket booking across global reservation systems</div>
+                        </div>
+                        <div class="card animate-in delay-4">
+                            <div class="card-icon">🛒</div>
+                            <div class="card-title">E-Commerce</div>
+                            <div class="card-text">Amazon, Daraz, Alibaba with distributed product databases</div>
+                        </div>
+                        <div class="card animate-in delay-5">
+                            <div class="card-icon">☁️</div>
+                            <div class="card-title">Cloud Computing</div>
+                            <div class="card-text">Distributed cloud databases like AWS Aurora, Google Spanner</div>
+                        </div>
+                        <div class="card animate-in delay-6">
+                            <div class="card-icon">🎓</div>
+                            <div class="card-title">University Systems</div>
+                            <div class="card-text">Distributed student databases across campus locations</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 28: Comparison -->
+            <div class="slide" data-slide="28">
+                <div class="slide-number">28</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Centralized vs Distributed Query Processing</h2>
+                    </div>
+                    <table class="styled-table animate-in delay-2">
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>❌ Centralized</th>
+                                <th>✅ Distributed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Data Location</td><td>Single Site</td><td>Multiple Sites</td></tr>
+                            <tr><td>Speed</td><td>Lower for large systems</td><td>Faster</td></tr>
+                            <tr><td>Scalability</td><td>Limited</td><td>High</td></tr>
+                            <tr><td>Communication Cost</td><td>Low</td><td>High</td></tr>
+                            <tr><td>Reliability</td><td>Lower</td><td>Higher</td></tr>
+                            <tr><td>Complexity</td><td>Simple</td><td>Complex</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SLIDE 29: Conclusion -->
+            <div class="slide" data-slide="29">
+                <div class="slide-number">29</div>
+                <div class="slide-content">
+                    <div class="animate-in delay-1">
+                        <h2 class="slide-title">Conclusion</h2>
+                    </div>
+                    <div style="max-width: 900px; margin: 0 auto; text-align: center;">
+                        <p class="animate-in delay-2" style="font-size: 1.3rem; line-height: 1.8; margin-bottom: 30px;">
+                            Distributed Query Processing is a <strong style="color: var(--primary);">vital concept</strong> in distributed database systems that enables modern cloud applications.
+                        </p>
+                        <div class="cards-grid animate-in delay-3" style="margin-top: 20px;">
+                            <div class="card">
+                                <div class="card-icon">⚡</div>
+                                <div class="card-text">Executes distributed queries efficiently</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon">📉</div>
+                                <div class="card-text">Minimizes communication overhead</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon">🚀</div>
+                                <div class="card-text">Improves system performance</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon">📈</div>
+                                <div class="card-text">Supports scalability</div>
+                            </div>
+                        </div>
+                        <p class="animate-in delay-4" style="margin-top: 30px; font-size: 1.1rem; color: var(--text-secondary);">
+                            Modern cloud systems <strong style="color: var(--success);">heavily depend</strong> on DQP for efficient data processing
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 30: Thank You -->
+            <div class="slide" data-slide="30">
+                <div class="slide-number">30</div>
+                <div class="slide-content" style="text-align: center;">
+                    <div class="animate-in delay-1" style="font-size: 4rem; margin-bottom: 20px;">🎓</div>
+                    <h2 class="animate-in delay-2 slide-title" style="font-size: 3.5rem;">Thank You!</h2>
+                    <p class="animate-in delay-3 slide-subtitle">Any Questions?</p>
+                    <div class="animate-in delay-4" style="margin-top: 40px; background: var(--bg-card); padding: 40px; border-radius: 16px; border: 2px solid var(--primary); max-width: 600px; margin-left: auto; margin-right: auto;">
+                        <h3 style="color: var(--primary); margin-bottom: 15px;">Presented By</h3>
+                        <p style="font-size: 1.4rem; font-weight: 700; margin-bottom: 5px;">Mohammad Ibrahim Pavel</p>
+                        <p style="color: var(--text-secondary);">Department of CSE</p>
+                        <p style="color: var(--text-secondary);">Bangladesh Open University</p>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">⚙️</div>
-        <span class="card-tag tag-b">beginner</span>
-        <h3>Query Processor Role</h3>
-        <p>Transforms declarative queries into optimal procedural operations. Handles <strong>three core jobs</strong>:</p>
-        <div class="card-formula">
-1. Query Language Support (SQL)
-2. Execution Methodology
-   → parsing → planning → running
-3. Query Optimization
-   → find the "best" plan
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">🌐</div>
-        <span class="card-tag tag-i">intermediate</span>
-        <h3>Distributed Extra Challenges</h3>
-        <p>When data lives on multiple sites, the processor must also handle:</p>
-        <div class="card-formula">
-+ Query Decomposition
-  → break query into sub-queries
-+ Data Localization
-  → find which site has which data
-+ Communication Cost Optimization
-  → minimize network traffic
-        </div>
-      </div>
-    </div>
-
-    <!-- Processing Layers -->
-    <div class="section-label label-core" style="margin-top:3rem">// Architecture</div>
-    <h3 style="font-family:'Orbitron',monospace;font-size:1.3rem;color:#fff;margin-bottom:2rem">4 Layers of Query Processing</h3>
-
-    <div class="layers-visual">
-      <div class="layer" style="background:rgba(168,85,247,0.08);border-color:rgba(168,85,247,0.3)">
-        <div class="layer-num">LAYER 1</div>
-        <div class="layer-name">Query Decomposition</div>
-        <div class="layer-input">Input: Calculus Query on Distributed Relations → Output: Algebra Query on Distributed Relations</div>
-      </div>
-      <div class="layer-arrow">↓</div>
-      <div class="layer" style="background:rgba(0,255,231,0.04)">
-        <div class="layer-num">LAYER 2</div>
-        <div class="layer-name">Data Localization</div>
-        <div class="layer-input">Input: Algebra Query on Distributed Relations → Output: Fragment Query</div>
-      </div>
-      <div class="layer-arrow">↓</div>
-      <div class="layer" style="background:rgba(245,158,11,0.06);border-color:rgba(245,158,11,0.2)">
-        <div class="layer-num">LAYER 3</div>
-        <div class="layer-name">Global Optimization</div>
-        <div class="layer-input">Input: Fragment Query + Statistics → Output: Optimized Fragment Query with Communication Ops</div>
-      </div>
-      <div class="layer-arrow">↓</div>
-      <div class="layer" style="background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.2)">
-        <div class="layer-num">LAYER 4</div>
-        <div class="layer-name">Local Optimization</div>
-        <div class="layer-input">Input: Optimized Fragment Query + Local Schema → Output: Optimized Local Queries</div>
-      </div>
-    </div>
-  </section>
-
-  <hr class="divider" data-text="beginner zone starts">
-
-  <!-- BEGINNER -->
-  <section id="beginner" class="reveal">
-    <div class="section-label label-beginner">// Level 01</div>
-    <h2 class="section-title">🟢 Beginner</h2>
-    <p class="section-desc">Master the fundamentals: centralized vs distributed query processing, basic optimization, and the cost problem.</p>
-
-    <!-- Centralized vs Distributed -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin-bottom:1.5rem;letter-spacing:0.1em">CENTRALIZED vs DISTRIBUTED PLANS</h3>
-
-    <div class="highlight-box">
-      <strong>Example Query:</strong><br>
-      <code style="background:none;color:var(--text)">SELECT ENAME FROM EMP E, ASG G WHERE E.ENO = G.ENO AND TITLE = "manager"</code><br><br>
-      Relations EMP and ASG are <strong>fragmented across multiple sites</strong>. The processor must choose how to execute this.
-    </div>
-
-    <div class="strategy-grid">
-      <div class="strategy-card">
-        <h4>📦 Plan I — Brute Force</h4>
-        <p>Transport <span class="con">ALL fragments</span> to one query site, execute everything there. Simple to implement but causes massive network traffic.</p>
-        <div class="card-formula" style="margin-top:1rem">
-Result = (EMP1 ∪ EMP2)
-       ⋈ENO
-       σTITLE="manager"(ASG1 ∪ ASG2)
-[All data → Site 5 → join]
-        </div>
-        <br>
-        <p><span class="con">Total Cost: 23,000 units</span> 💀</p>
-      </div>
-      <div class="strategy-card">
-        <h4>⚡ Plan II — Optimized</h4>
-        <p>Apply <span class="pro">selection first</span> at local sites, transfer only matching tuples, then join small results at query site.</p>
-        <div class="card-formula" style="margin-top:1rem">
-ASG1' = σTITLE="manager"(ASG1)
-ASG2' = σTITLE="manager"(ASG2)
-EMP1' = EMP1 ⋈ENO ASG1'
-EMP2' = EMP2 ⋈ENO ASG2'
-Result = (EMP1' ∪ EMP2')
-        </div>
-        <br>
-        <p><span class="pro">Total Cost: 460 units</span> ✅</p>
-      </div>
-    </div>
-
-    <!-- Cost Breakdown Table -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">COST BREAKDOWN — ASSUMPTIONS</h3>
-    <div class="highlight-box">
-      <strong>Given:</strong> size(EMP)=400, size(ASG)=1000, 20 tuples with TITLE="manager"<br>
-      <strong>Costs:</strong> tuple access = 1 unit · tuple transfer = 10 units<br>
-      <strong>Clustering:</strong> ASG clustered on TITLE, EMP clustered on ENO
-    </div>
-
-    <div class="cost-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Operation</th>
-            <th>Plan I</th>
-            <th>Plan II</th>
-            <th>Winner</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Transfer EMP to query site</td>
-            <td class="cost-val">400 × 10 = 4,000</td>
-            <td class="cost-val">—</td>
-            <td class="cost-win">Plan II</td>
-          </tr>
-          <tr>
-            <td>Transfer ASG to query site</td>
-            <td class="cost-val">1000 × 10 = 10,000</td>
-            <td class="cost-val">—</td>
-            <td class="cost-win">Plan II</td>
-          </tr>
-          <tr>
-            <td>Produce ASG' (selection)</td>
-            <td class="cost-val">1000 × 1 = 1,000</td>
-            <td class="cost-val">(10+10) × 1 = 20</td>
-            <td class="cost-win">Plan II</td>
-          </tr>
-          <tr>
-            <td>Join EMP and ASG'</td>
-            <td class="cost-val">400 × 20 × 1 = 8,000</td>
-            <td class="cost-val">(10+10) × 1 × 2 = 40</td>
-            <td class="cost-win">Plan II</td>
-          </tr>
-          <tr>
-            <td>Transfer ASG' to EMP sites</td>
-            <td class="cost-val">—</td>
-            <td class="cost-val">(10+10) × 10 = 200</td>
-            <td>—</td>
-          </tr>
-          <tr>
-            <td>Transfer EMP' to result site</td>
-            <td class="cost-val">—</td>
-            <td class="cost-val">(10+10) × 10 = 200</td>
-            <td>—</td>
-          </tr>
-          <tr style="background:rgba(0,0,0,0.3)">
-            <td><strong>TOTAL</strong></td>
-            <td style="color:var(--advanced);font-weight:700;font-family:'IBM Plex Mono',monospace">23,000</td>
-            <td style="color:var(--beginner);font-weight:700;font-family:'IBM Plex Mono',monospace">460</td>
-            <td class="cost-win">Plan II — 50× faster!</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Network Types -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">NETWORK TOPOLOGY IMPACT</h3>
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">🌍</div>
-        <span class="card-tag tag-b">WAN</span>
-        <h3>Wide Area Network</h3>
-        <p>Communication cost <strong>dominates everything</strong>. Low bandwidth + high protocol overhead. Algorithm goal: minimize data transfer at all costs.</p>
-        <div class="card-formula">
-Optimize for: min(communication cost)
-Ignore: CPU cost, I/O cost
-Use: global schedule → minimize transfer
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">🏢</div>
-        <span class="card-tag tag-b">LAN</span>
-        <h3>Local Area Network</h3>
-        <p>Communication cost less dominant. Consider <strong>total cost function</strong>. Broadcasting can be exploited. Special star-network algorithms available.</p>
-        <div class="card-formula">
-Optimize for: min(I/O + CPU + comm)
-Exploit: broadcast capabilities
-Use: total cost function
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <hr class="divider" data-text="intermediate zone starts">
-
-  <!-- INTERMEDIATE: QUERY DECOMPOSITION -->
-  <section id="intermediate" class="reveal">
-    <div class="section-label label-intermediate">// Level 02</div>
-    <h2 class="section-title">🟡 Intermediate</h2>
-    <p class="section-desc">Deep dive into Step 1: Query Decomposition — from calculus query to optimized relational algebra.</p>
-
-    <div class="roadmap-timeline">
-      <div class="timeline-item">
-        <div class="timeline-dot" style="border-color:var(--beginner);"></div>
-        <span class="card-tag tag-b" style="margin-bottom:0.5rem;display:inline-block">Step 1</span>
-        <h3>Normalization</h3>
-        <p>Convert query to CNF or DNF. Lexical + syntactic analysis. Type checking on qualifications. Maps OR → union, AND → join/selection.</p>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot" style="border-color:var(--intermediate);"></div>
-        <span class="card-tag tag-i" style="margin-bottom:0.5rem;display:inline-block">Step 2</span>
-        <h3>Analysis</h3>
-        <p>Reject type-incorrect or semantically incorrect queries. Use query graph — if NOT connected, query is semantically incorrect.</p>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot" style="border-color:var(--intermediate);"></div>
-        <span class="card-tag tag-i" style="margin-bottom:0.5rem;display:inline-block">Step 3</span>
-        <h3>Simplification</h3>
-        <p>Eliminate redundant predicates using idempotency rules. Reduce complex boolean expressions to minimal form.</p>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot" style="border-color:var(--advanced);"></div>
-        <span class="card-tag tag-a" style="margin-bottom:0.5rem;display:inline-block">Step 4</span>
-        <h3>Restructuring</h3>
-        <p>Translate calculus query to optimal relational algebra. Build query tree. Apply transformation rules to improve performance.</p>
-      </div>
-    </div>
-
-    <!-- Normalization Detail -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">CNF vs DNF FORMS</h3>
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">∧</div>
-        <span class="card-tag tag-b">CNF</span>
-        <h3>Conjunctive Normal Form</h3>
-        <p>AND of clauses, each clause is OR of predicates.</p>
-        <div class="card-formula">
-(p11 ∨ p12 ∨ ... ∨ p1n)
-∧ ...
-∧ (pm1 ∨ pm2 ∨ ... ∨ pmn)
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">∨</div>
-        <span class="card-tag tag-b">DNF</span>
-        <h3>Disjunctive Normal Form</h3>
-        <p>OR of clauses, each clause is AND of predicates.</p>
-        <div class="card-formula">
-(p11 ∧ p12 ∧ ... ∧ p1n)
-∨ ...
-∨ (pm1 ∧ pm2 ∧ ... ∧ pmn)
-        </div>
-      </div>
-    </div>
-
-    <!-- CNF Example -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">NORMALIZATION EXAMPLE</h3>
-    <div class="sql-block">
-<span class="kw">SELECT</span> <span class="attr">ENAME</span>
-<span class="kw">FROM</span>   EMP, ASG
-<span class="kw">WHERE</span>  EMP.ENO = ASG.ENO
-<span class="kw">AND</span>    ASG.JNO = <span class="str">"J1"</span>
-<span class="kw">AND</span>   (DUR = <span class="str">12</span> <span class="kw">OR</span> DUR = <span class="str">24</span>)
-    </div>
-    <div class="diagram-box">
-      <div><span class="d-comment">→ CNF form:</span></div>
-      <div><span class="d-op">(EMP.ENO = ASG.ENO)</span> <span class="d-arrow">∧</span></div>
-      <div><span class="d-op">(ASG.JNO = "J1")</span> <span class="d-arrow">∧</span></div>
-      <div><span class="d-op">(DUR = 12 ∨ DUR = 24)</span></div>
-    </div>
-
-    <!-- Analysis & Query Graph -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">ANALYSIS — QUERY GRAPH</h3>
-    <div class="highlight-box">
-      <strong>Rule:</strong> A conjunctive query (no negation) is <strong>semantically incorrect</strong> if its query graph is <strong>NOT connected</strong>.<br><br>
-      Query graph has: one node per relation + edges for joins and projections. All nodes must be reachable from the result node.
-    </div>
-
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">🔗</div>
-        <span class="card-tag tag-b">Type Incorrect</span>
-        <h3>Type Error Examples</h3>
-        <div class="sql-block">
-<span class="cmt">-- Undefined attribute:</span>
-<span class="kw">SELECT</span> <span class="attr">E#</span> <span class="kw">FROM</span> EMP  <span class="cmt">-- E# doesn't exist</span>
-
-<span class="cmt">-- Type mismatch:</span>
-<span class="kw">WHERE</span> <span class="attr">ENAME</span> > <span class="str">200</span>  <span class="cmt">-- string > number</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">🕸️</div>
-        <span class="card-tag tag-i">Semantically Incorrect</span>
-        <h3>Disconnected Query Graph</h3>
-        <p>If you have 3 relations but no join condition links them all — some relation floats disconnected → the query produces meaningless Cartesian product.</p>
-        <div class="card-formula">
-EMP ──⋈──  ASG   PROJ (isolated!)
-           ↑
-           connected
-           ↑
-     PROJ must also connect here
-        </div>
-      </div>
-    </div>
-
-    <!-- Simplification -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">SIMPLIFICATION EXAMPLE</h3>
-    <div class="highlight-box">
-      <strong>Complex query with redundant predicates:</strong>
-    </div>
-    <div class="sql-block">
-<span class="kw">SELECT</span> TITLE <span class="kw">FROM</span> EMP
-<span class="kw">WHERE</span> (<span class="kw">NOT</span>(TITLE=<span class="str">"Programmer"</span>)
-    <span class="kw">AND</span> (TITLE=<span class="str">"Programmer"</span> <span class="kw">OR</span> TITLE=<span class="str">"Electrical Eng."</span>)
-    <span class="kw">AND</span> <span class="kw">NOT</span>(TITLE=<span class="str">"Electrical Eng."</span>))
-   <span class="kw">OR</span> ENAME=<span class="str">"J.Doe"</span>
-    </div>
-    <div class="diagram-box">
-      <div><span class="d-comment">-- DNF Simplification:</span></div>
-      <div>p1 = TITLE="Programmer", p2 = TITLE="Elec.Engr", p3 = ENAME="J.Doe"</div>
-      <div>&nbsp;</div>
-      <div><span class="d-op">(¬p1 ∧ p1 ∧ ¬p2) ∨ (¬p1 ∧ p2 ∧ ¬p2) ∨ p3</span></div>
-      <div><span class="d-arrow">→</span> <span class="d-op">(false ∧ ¬p2) ∨ (¬p1 ∧ false) ∨ p3</span></div>
-      <div><span class="d-arrow">→</span> <span class="d-op">false ∨ false ∨ p3</span></div>
-      <div><span class="d-arrow">→</span> <span class="d-result">p3  (ENAME = "J.Doe")</span></div>
-      <div>&nbsp;</div>
-      <div><span class="d-comment">-- Simplified query:</span></div>
-      <div><span class="d-op">SELECT TITLE FROM EMP WHERE ENAME = "J.Doe"</span></div>
-    </div>
-
-    <!-- Transformation Rules -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">RESTRUCTURING — TRANSFORMATION RULES</h3>
-    <div class="accordion">
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>⟺ Commutativity of Binary Operations</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Joins and Unions can swap order:</strong><br>
-            <code>R × S ⟺ S × R</code><br>
-            <code>R ∪ S ⟺ S ∪ R</code><br>
-            <code>R ⋈ S ⟺ S ⋈ R</code><br><br>
-            Use this to put the <strong>smaller relation first</strong> in joins — reduces intermediate result size.
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>⟺ Associativity of Binary Operations</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Reorder joins freely:</strong><br>
-            <code>(R × S) × T ⟺ R × (S × T)</code><br>
-            <code>(R ⋈ S) ⋈ T ⟺ R ⋈ (S ⋈ T)</code><br><br>
-            Use this to find the <strong>join order that minimizes intermediate sizes</strong>.
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>⟺ Idempotence of Unary Operations</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Group multiple projections:</strong><br>
-            <code>Π_A'(Π_A''(R)) ⟺ Π_A'(R)  [if A' ⊆ A'']</code><br><br>
-            <strong>Group multiple selections:</strong><br>
-            <code>σ_p1(σ_p2(R)) ⟺ σ_p1∧p2(R)</code><br><br>
-            Access relation once instead of multiple times!
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>⟺ Commuting Selection with Binary Ops</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Push selections down the tree (most important optimization!):</strong><br>
-            <code>σ_p(Ai)(R × S) ⟺ (σ_p(Ai)(R)) × S</code><br>
-            <code>σ_p(Ai)(R ⋈ S) ⟺ (σ_p(Ai)(R)) ⋈ S</code><br>
-            <code>σ_p(Ai)(R ∪ S) ⟺ σ_p(Ai)(R) ∪ σ_p(Ai)(S)</code><br><br>
-            <strong>Why?</strong> Applying selection first reduces relation size <em>before</em> expensive join/product operations.
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>⟺ Commuting Projection with Binary Ops</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Push projections down similarly:</strong><br>
-            <code>Π_C(R × S) ⟺ Π_A(R) × Π_B(S)  [C = A ∪ B]</code><br>
-            <code>Π_C(R ⋈ S) ⟺ Π_C(R) ⋈ Π_C(S)</code><br>
-            <code>Π_C(R ∪ S) ⟺ Π_C(R) ∪ Π_C(S)</code><br><br>
-            Eliminate unneeded columns early to reduce data volume.
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Complexity -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">OPERATION COMPLEXITY (cardinality n, sorted tuples)</h3>
-    <div class="complexity-grid">
-      <div class="complexity-card">
-        <div class="complexity-op">σ (selection)</div>
-        <div class="complexity-label">without dup elimination</div>
-        <span class="complexity-val cv-low">O(log n)</span>
-      </div>
-      <div class="complexity-card">
-        <div class="complexity-op">π (projection)</div>
-        <div class="complexity-label">without dup elimination</div>
-        <span class="complexity-val cv-low">O(n)</span>
-      </div>
-      <div class="complexity-card">
-        <div class="complexity-op">π (projection)</div>
-        <div class="complexity-label">with dup elimination</div>
-        <span class="complexity-val cv-med">O(n log n)</span>
-      </div>
-      <div class="complexity-card">
-        <div class="complexity-op">GROUP BY</div>
-        <div class="complexity-label">aggregation</div>
-        <span class="complexity-val cv-med">O(n log n)</span>
-      </div>
-      <div class="complexity-card">
-        <div class="complexity-op">⋈ (join)</div>
-        <div class="complexity-label">nested loop</div>
-        <span class="complexity-val cv-high">O(n²)</span>
-      </div>
-      <div class="complexity-card">
-        <div class="complexity-op">× (Cartesian)</div>
-        <div class="complexity-label">always expensive</div>
-        <span class="complexity-val cv-high">O(n²) + large constant</span>
-      </div>
-    </div>
-  </section>
-
-  <hr class="divider" data-text="advanced zone starts">
-
-  <!-- ADVANCED: DATA LOCALIZATION + GLOBAL OPT -->
-  <section id="advanced" class="reveal">
-    <div class="section-label label-advanced">// Level 03</div>
-    <h2 class="section-title">🔴 Advanced</h2>
-    <p class="section-desc">Step 2: Data Localization — translating algebra queries on global relations into queries on physical fragments, then reduction and global optimization.</p>
-
-    <!-- Fragment Types -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin-bottom:1.5rem;letter-spacing:0.1em">FRAGMENTATION TYPES</h3>
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">↔️</div>
-        <span class="card-tag tag-a">PHF</span>
-        <h3>Primary Horizontal Fragmentation</h3>
-        <p>Relation split by rows using selection predicates. Each fragment has a subset of tuples satisfying a condition.</p>
-        <div class="card-formula">
-EMP1 = σ(ENO ≤ "E3")(EMP)
-EMP2 = σ("E3" &lt; ENO ≤ "E6")(EMP)
-EMP3 = σ(ENO > "E6")(EMP)
-
-EMP = EMP1 ∪ EMP2 ∪ EMP3
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">↕️</div>
-        <span class="card-tag tag-a">VF</span>
-        <h3>Vertical Fragmentation</h3>
-        <p>Relation split by columns using projection. Each fragment has a subset of attributes (columns).</p>
-        <div class="card-formula">
-EMP1 = Π(ENO, ENAME)(EMP)
-EMP2 = Π(ENO, TITLE)(EMP)
-
-Note: ENO must be in both
-→ needed for reconstruction
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">🔀</div>
-        <span class="card-tag tag-a">DHF</span>
-        <h3>Derived Horizontal Fragmentation</h3>
-        <p>Fragment defined by joining with another relation. ASG fragmented based on EMP's fragmentation criterion.</p>
-        <div class="card-formula">
-EMP1 = σTITLE="Programmer"(EMP)
-EMP2 = σTITLE≠"Programmer"(EMP)
-
-ASG1 = ASG ⋈ENO EMP1
-ASG2 = ASG ⋈ENO EMP2
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">🧬</div>
-        <span class="card-tag tag-a">HF</span>
-        <h3>Hybrid Fragmentation</h3>
-        <p>Combines horizontal + vertical fragmentation. Both row and column splits applied.</p>
-        <div class="card-formula">
-EMP1 = σ(ENO≤"E4")(Π(ENO,ENAME)(EMP))
-EMP2 = σ(ENO>"E4")(Π(ENO,ENAME)(EMP))
-EMP3 = Π(ENO,TITLE)(EMP)
-        </div>
-      </div>
-    </div>
-
-    <!-- Reduction Strategies -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">REDUCTION STRATEGIES</h3>
-
-    <div class="accordion">
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>🔴 Reduction with Selection (PHF)</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Rule:</strong> σ_pj(Rj) = ∅ if for all x in R: ¬(pi(x) ∧ pj(x))<br><br>
-            If the selection predicate <em>contradicts</em> the fragment's definition predicate → the result is empty → <strong>eliminate that fragment</strong>.<br><br>
-            <strong>Example:</strong><br>
-            Query: <code>SELECT * FROM EMP WHERE ENO = "E5"</code><br>
-            EMP1 = σ(ENO ≤ "E3")(EMP) → ENO="E5" contradicts ENO≤"E3" → <strong>EMP1 empty, skip</strong><br>
-            EMP2 = σ("E3" &lt; ENO ≤ "E6")(EMP) → ENO="E5" satisfies this → <strong>keep EMP2 only</strong><br>
-            EMP3 = σ(ENO > "E6")(EMP) → contradicts → <strong>skip</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>🔴 Reduction with Join (PHF)</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Steps:</strong><br>
-            1. <strong>Distribute join over union:</strong> (R1 ∪ R2) ⋈ S ⟺ (R1 ⋈ S) ∪ (R2 ⋈ S)<br>
-            2. <strong>Eliminate empty joins:</strong> Ri ⋈ Rj = ∅ if their defining predicates are mutually exclusive<br><br>
-            <strong>Example:</strong><br>
-            EMP fragmented by ENO ≤ "E3" / ENO > "E3"<br>
-            ASG fragmented by ENO ≤ "E3" / ENO > "E3"<br>
-            After distributing: 4 potential join pairs<br>
-            EMP1 ⋈ ASG2 = ∅ (ENO ≤ "E3" and ENO > "E3" can't match)<br>
-            EMP2 ⋈ ASG1 = ∅ (same contradiction)<br>
-            Result: only <strong>EMP1⋈ASG1</strong> and <strong>EMP2⋈ASG2</strong> survive!
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>🔴 Reduction for Vertical Fragmentation (VF)</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Rule:</strong> Π_D(Ri) is useless if projection attributes D are not in A' (Ri's attribute set)<br><br>
-            <strong>Example:</strong><br>
-            EMP1 = Π(ENO, ENAME)(EMP) — has ENAME<br>
-            EMP2 = Π(ENO, TITLE)(EMP) — has TITLE but no ENAME<br><br>
-            Query: <code>SELECT ENAME FROM EMP</code><br>
-            → Π_ENAME applied to EMP2 is <strong>useless</strong> (ENAME not in EMP2)<br>
-            → <strong>Eliminate EMP2</strong> from the query, keep only EMP1
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>🔴 Reduction for Derived HF (DHF)</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Process:</strong><br>
-            1. Apply selection first (push down σ)<br>
-            2. Distribute joins over unions<br>
-            3. Apply PHF join reduction rules to eliminate empty results<br><br>
-            <strong>Example Query:</strong><br>
-            <code>WHERE ASG.ENO = EMP.ENO AND EMP.TITLE = "Mech. Eng."</code><br>
-            After applying σ TITLE="Mech.Eng." first:<br>
-            σ on EMP1(TITLE="Programmer") = ∅ → <strong>ASG1 ⋈ EMP1 branch eliminated</strong><br>
-            Only ASG2 ⋈ EMP2(TITLE="Mech.Eng.") survives
-          </div>
-        </div>
-      </div>
-
-      <div class="accordion-item">
-        <div class="accordion-header" onclick="toggleAcc(this)">
-          <h4>🔴 Reduction for Hybrid Fragmentation</h4>
-          <span class="accordion-toggle">+</span>
-        </div>
-        <div class="accordion-body">
-          <div class="accordion-body-inner">
-            <strong>Combine all rules:</strong><br>
-            1. Remove empty relations (contradicting σ on horizontal fragments)<br>
-            2. Remove useless relations (Π on vertical fragments with wrong attributes)<br>
-            3. Distribute joins over unions → isolate and remove useless joins<br><br>
-            <strong>Example (Hybrid):</strong><br>
-            EMP1 = σ(ENO≤"E4")(Π(ENO,ENAME)(EMP))<br>
-            EMP2 = σ(ENO>"E4")(Π(ENO,ENAME)(EMP))<br>
-            EMP3 = Π(ENO,TITLE)(EMP)<br>
-            Query: <code>SELECT ENAME FROM EMP WHERE ENO = "E5"</code><br>
-            Step 1: σ ENO="E5" on EMP1 → contradicts ENO≤"E4" → <strong>EMP1 eliminated</strong><br>
-            Step 2: Π_ENAME on EMP3 → ENAME not in EMP3 → <strong>EMP3 eliminated</strong><br>
-            Result: only <strong>EMP2</strong> survives → Π_ENAME(σ_ENO="E5"(EMP2))
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Global Optimization -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">GLOBAL OPTIMIZATION</h3>
-
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">📊</div>
-        <span class="card-tag tag-a">Cost Function</span>
-        <h3>Optimization Objective</h3>
-        <p>Minimize the combined cost function across all factors:</p>
-        <div class="card-formula">
-Cost = I/O cost
-     + CPU cost
-     + Communication cost
-
-→ WAN: weights heavily comm cost
-→ LAN: balanced weights
-→ Also: maximize throughput
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">🔍</div>
-        <span class="card-tag tag-a">Search Strategy</span>
-        <h3>Exhaustive vs Heuristic</h3>
-        <p><strong>Exhaustive:</strong> Cost-based, finds optimal solution. Combinatorial complexity — only for small spaces.</p>
-        <p style="margin-top:0.8rem"><strong>Heuristic:</strong> Not optimal but practical. Key heuristics:</p>
-        <ul class="heuristic-list">
-          <li data-n="01">Re-group <strong>common sub-expressions</strong></li>
-          <li data-n="02">Perform <strong>σ and Π first</strong> always</li>
-          <li data-n="03">Replace join with <strong>semijoins</strong></li>
-          <li data-n="04">Reorder ops to reduce <strong>intermediate sizes</strong></li>
-          <li data-n="05">Optimize <strong>individual operations</strong></li>
-        </ul>
-      </div>
-      <div class="card">
-        <div class="card-icon">⏱️</div>
-        <span class="card-tag tag-a">Timing</span>
-        <h3>Static vs Dynamic vs Hybrid</h3>
-        <div class="card-formula">
-STATIC (compile time):
-+ amortized over many executions
-- hard to estimate intermediate sizes
-- appropriate for exhaustive search
-
-DYNAMIC (run time):
-+ accurate intermediate sizes
-- expensive, repeated every execution
-
-HYBRID:
-1. Compile with static algorithm
-2. If estimate error > threshold
-   → re-optimize at runtime
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon">📈</div>
-        <span class="card-tag tag-a">Statistics Needed</span>
-        <h3>Required Statistical Data</h3>
-        <ul class="heuristic-list">
-          <li data-n="R">Relation <strong>cardinality</strong> (tuple count)</li>
-          <li data-n="R">Size of a <strong>tuple</strong></li>
-          <li data-n="R">Fraction participating in <strong>join</strong></li>
-          <li data-n="A">Attribute <strong>domain cardinality</strong></li>
-          <li data-n="A">Number of <strong>distinct values</strong></li>
-        </ul>
-        <div class="card-formula" style="margin-top:1rem">
-Assumptions:
-• Attribute values: independent
-• Distribution: uniform within domain
-        </div>
-      </div>
-    </div>
-
-    <!-- Decision Sites -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">DECISION SITES FOR OPTIMIZATION</h3>
-    <div class="cards-grid">
-      <div class="card">
-        <div class="card-icon">🎯</div>
-        <span class="card-tag tag-i">Centralized</span>
-        <h3>Single Site Decision</h3>
-        <p>One site determines the entire schedule. Simple approach but requires <strong>knowledge about all distributed data</strong>.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🤝</div>
-        <span class="card-tag tag-i">Distributed</span>
-        <h3>All Sites Cooperate</h3>
-        <p>All sites coordinate to determine optimal schedule using only <strong>local information</strong>. More complex but more scalable.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">⭐</div>
-        <span class="card-tag tag-a">Hybrid</span>
-        <h3>One Site + Local Decisions</h3>
-        <p>One site determines <strong>global schedule</strong>. Each participating site <strong>optimizes its own local sub-queries</strong> independently.</p>
-      </div>
-    </div>
-
-    <!-- Semijoins -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">SEMIJOINS — REDUCING TRANSFER COST</h3>
-    <div class="highlight-box">
-      <strong>Idea:</strong> Instead of transferring full relation R to join with S at a remote site, send only the join attribute of R first, filter S, then send back only matching tuples.<br><br>
-      <strong>R ⋉ S = Π_A(R ⋈ S)</strong> — semijoin of R with S on A<br><br>
-      Effective when: the join <strong>selectivity is low</strong> (few matching tuples) and <strong>communication overhead</strong> is not significant relative to savings.
-    </div>
-    <div class="diagram-box">
-      <div><span class="d-comment">-- Without semijoin (naive):</span></div>
-      <div><span class="d-site">Site 1</span> → transfer full R → <span class="d-site">Site 2</span></div>
-      <div><span class="d-site">Site 2</span> → R ⋈ S → result</div>
-      <div>&nbsp;</div>
-      <div><span class="d-comment">-- With semijoin:</span></div>
-      <div><span class="d-site">Site 1</span> → send Π_A(R) [join attributes only] → <span class="d-site">Site 2</span></div>
-      <div><span class="d-site">Site 2</span> → compute S' = S ⋉ Π_A(R) [filter S] → send S' back</div>
-      <div><span class="d-site">Site 1</span> → R ⋈ S' [small S' only!] → <span class="d-result">result</span></div>
-    </div>
-
-    <!-- Optimization Granularity -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:3rem 0 1rem;letter-spacing:0.1em">OPTIMIZATION GRANULARITY</h3>
-    <div class="strategy-grid">
-      <div class="strategy-card">
-        <h4>Single Query at a Time</h4>
-        <p>Each query optimized independently.<br><span class="con">Cannot reuse common intermediate results.</span></p>
-      </div>
-      <div class="strategy-card">
-        <h4>Multiple Queries at a Time</h4>
-        <p>Batch queries together, share common sub-expressions.<br><span class="pro">Efficient when many similar queries run together.</span><br><span class="con">Decision space much larger.</span></p>
-      </div>
-    </div>
-  </section>
-
-  <!-- QUIZ -->
-  <section id="quiz" class="reveal">
-    <div class="quiz-section">
-      <h3>🎯 Quick Knowledge Check</h3>
-
-      <div class="quiz-q">
-        <p>Q1. Plan I costs 23,000 units, Plan II costs 460 units. What is the key difference?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. Plan II uses faster hardware</button>
-          <button class="quiz-opt" onclick="answer(this,true)">B. Plan II applies selection before transfer</button>
-          <button class="quiz-opt" onclick="answer(this,false)">C. Plan II skips the join operation</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Plan I uses more sites</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q2. A conjunctive query without negation is semantically incorrect when its query graph is...?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. Directed</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. Complete (fully connected)</button>
-          <button class="quiz-opt" onclick="answer(this,true)">C. NOT connected</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Cyclic</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q3. Vertical fragmentation splits a relation by...?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. Rows (tuples)</button>
-          <button class="quiz-opt" onclick="answer(this,true)">B. Columns (attributes)</button>
-          <button class="quiz-opt" onclick="answer(this,false)">C. Sites</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Index values</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q4. In WAN environments, which cost component dominates optimization decisions?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. CPU cost</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. I/O cost</button>
-          <button class="quiz-opt" onclick="answer(this,true)">C. Communication cost</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Memory cost</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q5. Hybrid optimization timing works by...?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. Only using dynamic optimization</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. Only using static optimization</button>
-          <button class="quiz-opt" onclick="answer(this,true)">C. Static compile + re-optimize at runtime if estimate error > threshold</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Running both in parallel</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- INTERACTIVE COST CALCULATOR -->
-  <section id="calculator" class="reveal">
-    <div class="section-label label-advanced">// Interactive Tool</div>
-    <h2 class="section-title">⚡ Cost Plan Calculator</h2>
-    <p class="section-desc">Adjust relation sizes and tuple costs — see live which plan wins and by how much.</p>
-
-    <div style="background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:16px;padding:2rem;">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.5rem;margin-bottom:2rem;">
-
-        <div>
-          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">EMP SIZE</label>
-          <input type="range" id="cEMP" min="50" max="2000" value="400" style="width:100%;accent-color:var(--accent)">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vEMP">400</span> tuples</div>
-        </div>
-
-        <div>
-          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">ASG SIZE</label>
-          <input type="range" id="cASG" min="50" max="5000" value="1000" style="width:100%;accent-color:var(--accent)">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vASG">1000</span> tuples</div>
-        </div>
-
-        <div>
-          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">MATCHING TUPLES (TITLE="manager")</label>
-          <input type="range" id="cMatch" min="1" max="200" value="20" style="width:100%;accent-color:var(--accent)">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vMatch">20</span> tuples</div>
-        </div>
-
-        <div>
-          <label style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--accent);letter-spacing:0.15em;display:block;margin-bottom:0.5rem">TRANSFER COST / TUPLE</label>
-          <input type="range" id="cTrans" min="1" max="50" value="10" style="width:100%;accent-color:var(--accent)">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--text);margin-top:0.3rem">= <span id="vTrans">10</span>x access cost</div>
-        </div>
-
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
-        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:1.5rem;text-align:center;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--advanced);letter-spacing:0.2em;margin-bottom:0.8rem">PLAN I — BRUTE FORCE</div>
-          <div style="font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--advanced)" id="cost1">23,000</div>
-          <div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">units</div>
-        </div>
-        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:1.5rem;text-align:center;">
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--beginner);letter-spacing:0.2em;margin-bottom:0.8rem">PLAN II — OPTIMIZED</div>
-          <div style="font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;color:var(--beginner)" id="cost2">460</div>
-          <div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">units</div>
-        </div>
-      </div>
-
-      <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--dim);margin-bottom:0.4rem">PLAN II IS FASTER BY</div>
-        <div style="font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;color:var(--gold)" id="speedup">50.0×</div>
-      </div>
-
-      <!-- Bar chart -->
-      <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:flex-end;height:120px;">
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0.4rem;">
-          <div id="bar1" style="width:100%;background:rgba(239,68,68,0.6);border-radius:4px 4px 0 0;transition:height 0.4s;height:100%;min-height:4px;"></div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--advanced)">PLAN I</div>
-        </div>
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0.4rem;">
-          <div id="bar2" style="width:100%;background:rgba(34,197,94,0.6);border-radius:4px 4px 0 0;transition:height 0.4s;height:2%;min-height:4px;"></div>
-          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--beginner)">PLAN II</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- QUERY TREE VISUALIZER -->
-  <section id="querytree" class="reveal">
-    <div class="section-label label-intermediate">// Visual Tool</div>
-    <h2 class="section-title">🌲 Interactive Query Tree</h2>
-    <p class="section-desc">Click any node to see what it does. Toggle optimization to see how pushing selections down transforms the tree.</p>
-
-    <div style="background:rgba(0,0,0,0.5);border:1px solid var(--border);border-radius:16px;padding:2rem;">
-      <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-        <button onclick="setTree('naive')" id="btnNaive" class="pill pill-advanced" style="cursor:pointer">Naive Tree</button>
-        <button onclick="setTree('optimized')" id="btnOpt" class="pill pill-beginner" style="cursor:pointer;opacity:0.5">Optimized Tree</button>
-      </div>
-
-      <canvas id="treeCanvas" width="700" height="400" style="width:100%;max-width:700px;display:block;margin:0 auto;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border);"></canvas>
-
-      <div id="nodeInfo" style="margin-top:1.2rem;padding:1rem;background:rgba(0,255,231,0.04);border:1px solid var(--border);border-radius:8px;font-size:0.85rem;color:var(--dim);font-family:'IBM Plex Mono',monospace;min-height:60px;">
-        Click any node to see details...
-      </div>
-    </div>
-  </section>
-
-  <!-- EXAM CHEAT SHEET -->
-  <section id="cheatsheet" class="reveal">
-    <div class="section-label label-core">// Quick Reference</div>
-    <h2 class="section-title">📋 Exam Cheat Sheet</h2>
-    <p class="section-desc">Everything distilled. Memorize these — boards love them.</p>
-
-    <div class="cards-grid">
-
-      <div class="card">
-        <div class="card-icon">🏗️</div>
-        <span class="card-tag tag-c">Must Know</span>
-        <h3>4 Steps of Decomposition</h3>
-        <ul class="heuristic-list">
-          <li data-n="1">Normalization — CNF/DNF form</li>
-          <li data-n="2">Analysis — reject incorrect queries, check query graph connectivity</li>
-          <li data-n="3">Simplification — remove redundant predicates via idempotency</li>
-          <li data-n="4">Restructuring — calculus → algebra, build + optimize query tree</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">🧩</div>
-        <span class="card-tag tag-c">Must Know</span>
-        <h3>Fragmentation Rules</h3>
-        <ul class="heuristic-list">
-          <li data-n="PHF">σ_pj(Rj) = ∅ if predicates pi ∧ pj impossible → eliminate fragment</li>
-          <li data-n="VF">Π_D(Ri) useless if D ⊄ A' → eliminate fragment</li>
-          <li data-n="DHF">Distribute joins over unions, then apply PHF rules</li>
-          <li data-n="HF">Combine all three reduction rules</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">📐</div>
-        <span class="card-tag tag-c">Must Know</span>
-        <h3>Key Transformation Rules</h3>
-        <div class="card-formula">
-σ pushed DOWN before joins ✓
-Π pushed DOWN before joins ✓
-σ(σ(R)) → σ(p1∧p2)(R)     ✓
-Π(Π(R))  → Π_A'(R)         ✓
-Commutativity: R⋈S = S⋈R   ✓
-Associativity: (R⋈S)⋈T =
-               R⋈(S⋈T)      ✓
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">💰</div>
-        <span class="card-tag tag-c">Must Know</span>
-        <h3>Optimization Dimensions</h3>
-        <ul class="heuristic-list">
-          <li data-n="G1">Granularity: single query vs multiple queries</li>
-          <li data-n="G2">Timing: static / dynamic / hybrid</li>
-          <li data-n="G3">Decision site: centralized / distributed / hybrid</li>
-          <li data-n="G4">Search: exhaustive (optimal) / heuristic (practical)</li>
-          <li data-n="G5">Network: WAN (min comm) / LAN (total cost)</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">⚖️</div>
-        <span class="card-tag tag-c">Must Know</span>
-        <h3>Semijoin Benefit</h3>
-        <div class="card-formula">
-R ⋉ S = Π_A(R ⋈ S)
-
-Use when:
-• Join selectivity is LOW
-• Communication overhead LOW
-• Many non-matching tuples in R
-
-Avoid when:
-• Most tuples match anyway
-• Small relations → just send all
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-icon">🧠</div>
-        <span class="card-tag tag-c">Must Know</span>
-        <h3>Statistics Assumptions</h3>
-        <ul class="heuristic-list">
-          <li data-n="★">Attribute values are <strong>independent</strong> of each other</li>
-          <li data-n="★">Values are <strong>uniformly distributed</strong> within their domain</li>
-          <li data-n="★">These assumptions can cause estimation errors → justify hybrid timing</li>
-        </ul>
-      </div>
-
     </div>
 
-    <!-- One-liner formula table -->
-    <h3 style="font-family:'IBM Plex Mono',monospace;font-size:1rem;color:var(--accent);margin:2rem 0 1rem;letter-spacing:0.1em">PLAN COST FORMULAS — MEMORIZE</h3>
-    <div class="cost-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Plan</th>
-            <th>Formula</th>
-            <th>Key Insight</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Plan I</strong></td>
-            <td class="cost-val">|EMP|×c_t + |ASG|×c_t + |ASG|×c_a + |EMP|×|ASG'|×c_a</td>
-            <td>Transfer everything first, then filter</td>
-          </tr>
-          <tr>
-            <td><strong>Plan II</strong></td>
-            <td class="cost-val">2|ASG'|×c_a + 2|ASG'|×c_t + 2|ASG'|×c_a×2 + 2|EMP'|×c_t</td>
-            <td>Filter locally, transfer small results only</td>
-          </tr>
-          <tr>
-            <td><strong>General rule</strong></td>
-            <td class="cost-val">σ first → reduces |R| before ⋈</td>
-            <td class="cost-win">Always push selections down!</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Navigation -->
+    <div class="keyboard-hint">
+        Use <span class="key">←</span> <span class="key">→</span> arrow keys or click to navigate
     </div>
-  </section>
-
-  <!-- EXTRA QUIZ -->
-  <section id="quiz2" class="reveal">
-    <div class="quiz-section">
-      <h3>🎯 Advanced Quiz — Reduction & Optimization</h3>
-
-      <div class="quiz-q">
-        <p>Q6. EMP fragmented: EMP1=σ(ENO≤"E3"), EMP2=σ(ENO>"E3"). Query: WHERE ENO="E2". Which fragment survives?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,true)">A. EMP1 only</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. EMP2 only</button>
-          <button class="quiz-opt" onclick="answer(this,false)">C. Both EMP1 and EMP2</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Neither</button>
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" disabled>←</button>
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">30</span>
         </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q7. In vertical fragmentation, EMP1=Π(ENO,ENAME), EMP2=Π(ENO,TITLE). Query: SELECT TITLE FROM EMP. Which fragment is useless?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,true)">A. EMP1 (no TITLE attribute)</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. EMP2 (no ENAME attribute)</button>
-          <button class="quiz-opt" onclick="answer(this,false)">C. Neither — both needed</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Both are useless</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q8. What does the query graph tool detect?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. I/O cost of the query</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. Number of fragments needed</button>
-          <button class="quiz-opt" onclick="answer(this,true)">C. Semantic incorrectness via disconnected graph</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Optimal join order</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q9. After distributing join over union for PHF, what rule eliminates useless joins?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. Π_D(Ri) = ∅ if D ⊄ A'</button>
-          <button class="quiz-opt" onclick="answer(this,true)">B. Ri ⋈ Rj = ∅ if defining predicates are mutually exclusive</button>
-          <button class="quiz-opt" onclick="answer(this,false)">C. σ_p(R) = R if p is always true</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. Commutativity of join</button>
-        </div>
-      </div>
-
-      <div class="quiz-q">
-        <p>Q10. Static optimization is "amortized over many executions" — what does this mean?</p>
-        <div class="quiz-options">
-          <button class="quiz-opt" onclick="answer(this,false)">A. It runs faster each time it's called</button>
-          <button class="quiz-opt" onclick="answer(this,false)">B. It uses less memory over time</button>
-          <button class="quiz-opt" onclick="answer(this,true)">C. One-time optimization cost spread over many query executions</button>
-          <button class="quiz-opt" onclick="answer(this,false)">D. It recalculates statistics over time</button>
-        </div>
-      </div>
-
+        <button class="nav-btn" id="nextBtn">→</button>
     </div>
-  </section>
 
-</main>
+    <script>
+        class Presentation {
+            constructor() {
+                this.currentSlide = 1;
+                this.totalSlides = 30;
+                this.slides = document.querySelectorAll('.slide');
+                this.progressBar = document.getElementById('progressBar');
+                this.currentSlideDisplay = document.getElementById('currentSlide');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                
+                this.init();
+            }
 
-<footer>
-  <p>⬡ Distributed Query Processing — Beginner to Advanced Roadmap<br>
-  Built for <span>CSE Students</span> · Chapters 5–7 Complete Coverage · Ibrahim Pavel</p>
-</footer>
+            init() {
+                this.setupEventListeners();
+                this.createBackgroundParticles();
+                this.updateSlide();
+                this.animateCostBars();
+            }
 
-<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+            setupEventListeners() {
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+                        e.preventDefault();
+                        this.nextSlide();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        this.prevSlide();
+                    }
+                });
 
-<script>
-// ═══════════════════════════════════════════
-// THREE.JS 3D BACKGROUND
-// ═══════════════════════════════════════════
-const canvas = document.getElementById('canvas3d');
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                // Button navigation
+                this.prevBtn.addEventListener('click', () => this.prevSlide());
+                this.nextBtn.addEventListener('click', () => this.nextSlide());
 
-camera.position.z = 30;
+                // Touch support
+                let touchStartX = 0;
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                });
+                document.addEventListener('touchend', (e) => {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    if (touchStartX - touchEndX > 50) this.nextSlide();
+                    else if (touchEndX - touchStartX > 50) this.prevSlide();
+                });
+            }
 
-// Node network
-const nodeCount = 80;
-const nodes = [];
-const nodeGeom = new THREE.SphereGeometry(0.15, 8, 8);
+            createBackgroundParticles() {
+                const bg = document.getElementById('bgAnimation');
+                for (let i = 0; i < 30; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + '%';
+                    particle.style.setProperty('--dir-x', (Math.random() - 0.5));
+                    particle.style.setProperty('--dir-y', Math.random());
+                    particle.style.animationDelay = (Math.random() * 15) + 's';
+                    particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+                    bg.appendChild(particle);
+                }
 
-const colors = [
-  new THREE.Color(0x00ffe7),
-  new THREE.Color(0xff6b35),
-  new THREE.Color(0xa855f7),
-  new THREE.Color(0x22c55e),
-];
+                for (let i = 0; i < 10; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'connection-line';
+                    line.style.top = Math.random() * 100 + '%';
+                    line.style.left = Math.random() * 100 + '%';
+                    line.style.width = (50 + Math.random() * 150) + 'px';
+                    line.style.animationDelay = (Math.random() * 8) + 's';
+                    bg.appendChild(line);
+                }
+            }
 
-for(let i=0; i<nodeCount; i++){
-  const mat = new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random()*colors.length)], transparent:true, opacity:0.7 });
-  const mesh = new THREE.Mesh(nodeGeom, mat);
-  mesh.position.set(
-    (Math.random()-0.5)*80,
-    (Math.random()-0.5)*60,
-    (Math.random()-0.5)*40
-  );
-  mesh.userData = {
-    vx: (Math.random()-0.5)*0.02,
-    vy: (Math.random()-0.5)*0.02,
-    vz: (Math.random()-0.5)*0.01,
-    pulse: Math.random()*Math.PI*2
-  };
-  scene.add(mesh);
-  nodes.push(mesh);
-}
+            updateSlide() {
+                this.slides.forEach((slide, index) => {
+                    slide.classList.remove('active', 'prev', 'next');
+                    if (index + 1 === this.currentSlide) {
+                        slide.classList.add('active');
+                    } else if (index + 1 < this.currentSlide) {
+                        slide.classList.add('prev');
+                    } else {
+                        slide.classList.add('next');
+                    }
+                });
 
-// Edges
-const edgeMat = new THREE.LineBasicMaterial({ color:0x00ffe7, transparent:true, opacity:0.08 });
-const edges = [];
-for(let i=0; i<nodeCount; i++){
-  for(let j=i+1; j<nodeCount; j++){
-    const d = nodes[i].position.distanceTo(nodes[j].position);
-    if(d < 15 && Math.random() > 0.7){
-      const points = [nodes[i].position.clone(), nodes[j].position.clone()];
-      const geom = new THREE.BufferGeometry().setFromPoints(points);
-      const line = new THREE.Line(geom, edgeMat.clone());
-      scene.add(line);
-      edges.push({ line, i, j });
-    }
-  }
-}
+                this.progressBar.style.width = ((this.currentSlide / this.totalSlides) * 100) + '%';
+                this.currentSlideDisplay.textContent = this.currentSlide;
+                this.prevBtn.disabled = this.currentSlide === 1;
+                this.nextBtn.disabled = this.currentSlide === this.totalSlides;
 
-// Data packets
-const packetGeom = new THREE.SphereGeometry(0.08, 6, 6);
-const packets = [];
-for(let i=0; i<20; i++){
-  const edge = edges[Math.floor(Math.random()*edges.length)];
-  if(!edge) continue;
-  const mat = new THREE.MeshBasicMaterial({ color:0x00ffe7, transparent:true, opacity:0.9 });
-  const mesh = new THREE.Mesh(packetGeom, mat);
-  mesh.userData = { edge, t: Math.random() };
-  scene.add(mesh);
-  packets.push(mesh);
-}
+                // Re-trigger cost bar animations
+                this.animateCostBars();
+            }
 
-// Mouse influence
-let mouseX = 0, mouseY = 0;
-document.addEventListener('mousemove', e => {
-  mouseX = (e.clientX/window.innerWidth-0.5)*2;
-  mouseY = -(e.clientY/window.innerHeight-0.5)*2;
-});
+            nextSlide() {
+                if (this.currentSlide < this.totalSlides) {
+                    this.currentSlide++;
+                    this.updateSlide();
+                }
+            }
 
-let t = 0;
-function animate(){
-  requestAnimationFrame(animate);
-  t += 0.005;
+            prevSlide() {
+                if (this.currentSlide > 1) {
+                    this.currentSlide--;
+                    this.updateSlide();
+                }
+            }
 
-  // camera gentle rotation
-  camera.position.x += (mouseX*5 - camera.position.x)*0.02;
-  camera.position.y += (mouseY*3 - camera.position.y)*0.02;
-  camera.lookAt(scene.position);
+            animateCostBars() {
+                const costBars = document.querySelectorAll('.cost-bar .fill');
+                costBars.forEach(bar => {
+                    bar.style.width = '0';
+                    setTimeout(() => {
+                        bar.style.width = bar.dataset.width;
+                    }, 500);
+                });
+            }
+        }
 
-  // move nodes
-  nodes.forEach(n => {
-    n.position.x += n.userData.vx;
-    n.position.y += n.userData.vy;
-    n.position.z += n.userData.vz;
-    // bounce
-    if(Math.abs(n.position.x)>40){ n.userData.vx *= -1; }
-    if(Math.abs(n.position.y)>30){ n.userData.vy *= -1; }
-    if(Math.abs(n.position.z)>20){ n.userData.vz *= -1; }
-    // pulse
-    n.userData.pulse += 0.03;
-    n.material.opacity = 0.4 + Math.sin(n.userData.pulse)*0.3;
-  });
-
-  // update edge positions
-  edges.forEach(({line, i, j}) => {
-    const positions = line.geometry.attributes.position;
-    if(positions){
-      positions.setXYZ(0, nodes[i].position.x, nodes[i].position.y, nodes[i].position.z);
-      positions.setXYZ(1, nodes[j].position.x, nodes[j].position.y, nodes[j].position.z);
-      positions.needsUpdate = true;
-    }
-  });
-
-  // animate packets along edges
-  packets.forEach(p => {
-    const {edge} = p.userData;
-    p.userData.t = (p.userData.t + 0.008) % 1;
-    const pt = p.userData.t;
-    const n1 = nodes[edge.i].position;
-    const n2 = nodes[edge.j].position;
-    p.position.lerpVectors(n1, n2, pt);
-  });
-
-  renderer.render(scene, camera);
-}
-animate();
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// ═══════════════════════════════════════════
-// CURSOR
-// ═══════════════════════════════════════════
-const cursor = document.getElementById('cursor');
-const ring = document.getElementById('cursor-ring');
-let rx=0,ry=0;
-document.addEventListener('mousemove', e => {
-  cursor.style.left = e.clientX+'px';
-  cursor.style.top  = e.clientY+'px';
-  rx += (e.clientX-rx)*0.15;
-  ry += (e.clientY-ry)*0.15;
-  ring.style.left = rx+'px';
-  ring.style.top  = ry+'px';
-});
-
-function animRing(){
-  rx += (parseFloat(cursor.style.left||0)-rx)*0.15;
-  ry += (parseFloat(cursor.style.top||0)-ry)*0.15;
-  ring.style.left = rx+'px';
-  ring.style.top  = ry+'px';
-  requestAnimationFrame(animRing);
-}
-animRing();
-
-document.addEventListener('mousedown', () => cursor.style.transform = 'translate(-50%,-50%) scale(0.7)');
-document.addEventListener('mouseup',   () => cursor.style.transform = 'translate(-50%,-50%) scale(1)');
-
-// ═══════════════════════════════════════════
-// SCROLL PROGRESS
-// ═══════════════════════════════════════════
-const progress = document.getElementById('progress');
-const scrollTopBtn = document.getElementById('scrollTop');
-window.addEventListener('scroll', () => {
-  const scrollPct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
-  progress.style.width = scrollPct + '%';
-  scrollTopBtn.classList.toggle('visible', window.scrollY > 400);
-});
-
-// ═══════════════════════════════════════════
-// REVEAL ON SCROLL
-// ═══════════════════════════════════════════
-const revealEls = document.querySelectorAll('.reveal');
-const revealObserver = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if(e.isIntersecting){ e.target.classList.add('visible'); }
-  });
-}, { threshold:0.1 });
-revealEls.forEach(el => { revealObserver.observe(el); el.classList.add('visible'); });
-
-// ═══════════════════════════════════════════
-// COST CALCULATOR
-// ═══════════════════════════════════════════
-function calcCosts(){
-  const emp   = +document.getElementById('cEMP').value;
-  const asg   = +document.getElementById('cASG').value;
-  const match = +document.getElementById('cMatch').value;
-  const ct    = +document.getElementById('cTrans').value; // transfer multiplier
-  const ca    = 1; // access cost = 1
-
-  document.getElementById('vEMP').textContent   = emp;
-  document.getElementById('vASG').textContent   = asg;
-  document.getElementById('vMatch').textContent = match;
-  document.getElementById('vTrans').textContent = ct;
-
-  // Plan I
-  const p1 = emp*ct + asg*ct + asg*ca + emp*match*ca;
-  // Plan II (2 sites each, simplified)
-  const asgPrime = match; // only matching tuples transferred
-  const p2 = 2*asgPrime*ca + 2*asgPrime*ct + 2*asgPrime*ca*2 + 2*asgPrime*ct;
-
-  document.getElementById('cost1').textContent = p1.toLocaleString();
-  document.getElementById('cost2').textContent = p2.toLocaleString();
-  const speedup = p1/Math.max(p2,1);
-  document.getElementById('speedup').textContent = speedup.toFixed(1) + '×';
-
-  // bars
-  const pct2 = Math.min(p2/p1*100, 100);
-  document.getElementById('bar1').style.height = '100%';
-  document.getElementById('bar2').style.height = Math.max(pct2,2) + '%';
-}
-['cEMP','cASG','cMatch','cTrans'].forEach(id => {
-  document.getElementById(id).addEventListener('input', calcCosts);
-});
-calcCosts();
-
-// ═══════════════════════════════════════════
-// QUERY TREE VISUALIZER
-// ═══════════════════════════════════════════
-const treeCanvas = document.getElementById('treeCanvas');
-const ctx = treeCanvas.getContext('2d');
-let currentTree = 'naive';
-
-const treeData = {
-  naive: {
-    label:'Π ENAME', color:'#a855f7', x:350, y:40,
-    info:'PROJECT: Π ENAME — final result. Outputs only the ENAME attribute.',
-    children:[{
-      label:'σ conditions', color:'#f59e0b', x:350, y:120,
-      info:'SELECT: σ(ENAME≠"J.DOE" ∧ JNAME="CAD/CAM" ∧ (Dur=12 ∨ Dur=24)) — filters applied AFTER the expensive join!',
-      children:[{
-        label:'⋈ ENO & JNO', color:'#ef4444', x:350, y:210,
-        info:'JOIN: Cartesian product then filter — very expensive! Both full relations EMP and ASG sent across network.',
-        children:[
-          { label:'EMP', color:'#00ffe7', x:200, y:310, info:'Relation EMP — all 400 tuples. Full transfer to query site.', children:[] },
-          { label:'ASG', color:'#00ffe7', x:350, y:310, info:'Relation ASG — all 1000 tuples. Full transfer to query site.', children:[] },
-          { label:'PROJ', color:'#00ffe7', x:500, y:310, info:'Relation PROJ — all tuples transferred.', children:[] },
-        ]
-      }]
-    }]
-  },
-  optimized: {
-    label:'Π ENAME', color:'#a855f7', x:350, y:30,
-    info:'PROJECT: Final output — only ENAME column.',
-    children:[{
-      label:'⋈ ENO', color:'#22c55e', x:350, y:110,
-      info:'JOIN on ENO — now joining SMALL pre-filtered relations. Much cheaper!',
-      children:[{
-        label:'σ ENAME≠J.Doe', color:'#f59e0b', x:200, y:200,
-        info:'SELECTION pushed down to EMP FIRST — eliminates unwanted employees before join.',
-        children:[
-          { label:'EMP', color:'#00ffe7', x:200, y:300, info:'EMP relation — selection applied locally before any transfer.', children:[] }
-        ]
-      },{
-        label:'⋈ JNO', color:'#22c55e', x:500, y:200,
-        info:'JOIN ASG with filtered PROJ — smaller intermediate result.',
-        children:[{
-          label:'σ Dur=12|24', color:'#f59e0b', x:400, y:290,
-          info:'SELECTION on duration applied to ASG early — only matching tuples remain.',
-          children:[
-            { label:'ASG', color:'#00ffe7', x:400, y:370, info:'ASG — only 20 matching tuples survive σ filter.', children:[] }
-          ]
-        },{
-          label:'σ JNAME=CAD', color:'#f59e0b', x:580, y:290,
-          info:'SELECTION on PROJ for project name — reduces PROJ before join.',
-          children:[
-            { label:'PROJ', color:'#00ffe7', x:580, y:370, info:'PROJ — filtered to only CAD/CAM project.', children:[] }
-          ]
-        }]
-      }]
-    }]
-  }
-};
-
-function drawNode(node, hovered) {
-  const r = 28;
-  ctx.beginPath();
-  ctx.arc(node.x, node.y, r, 0, Math.PI*2);
-  const grd = ctx.createRadialGradient(node.x, node.y, 4, node.x, node.y, r);
-  grd.addColorStop(0, node.color+'33');
-  grd.addColorStop(1, node.color+'11');
-  ctx.fillStyle = grd;
-  ctx.fill();
-  ctx.strokeStyle = node.color;
-  ctx.lineWidth = hovered === node ? 2.5 : 1.5;
-  ctx.stroke();
-
-  ctx.fillStyle = '#fff';
-  ctx.font = hovered === node ? 'bold 9px IBM Plex Mono' : '8px IBM Plex Mono';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const words = node.label.split(' ');
-  if(words.length > 1){
-    ctx.fillText(words[0], node.x, node.y-5);
-    ctx.fillText(words.slice(1).join(' '), node.x, node.y+6);
-  } else {
-    ctx.fillText(node.label, node.x, node.y);
-  }
-}
-
-function drawEdge(parent, child) {
-  ctx.beginPath();
-  ctx.moveTo(parent.x, parent.y+28);
-  ctx.lineTo(child.x, child.y-28);
-  ctx.strokeStyle = 'rgba(0,255,231,0.2)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-}
-
-function getAllNodes(node, list=[]) {
-  list.push(node);
-  node.children.forEach(c => getAllNodes(c, list));
-  return list;
-}
-
-function drawTree(node, hovered=null) {
-  node.children.forEach(child => {
-    drawEdge(node, child);
-    drawTree(child, hovered);
-  });
-  drawNode(node, hovered);
-}
-
-let hoveredNode = null;
-
-function renderTree(hovered=null) {
-  ctx.clearRect(0,0,treeCanvas.width,treeCanvas.height);
-  const root = treeData[currentTree];
-  drawTree(root, hovered);
-}
-
-treeCanvas.addEventListener('mousemove', e => {
-  const rect = treeCanvas.getBoundingClientRect();
-  const scaleX = treeCanvas.width / rect.width;
-  const scaleY = treeCanvas.height / rect.height;
-  const mx = (e.clientX - rect.left)*scaleX;
-  const my = (e.clientY - rect.top)*scaleY;
-  const nodes = getAllNodes(treeData[currentTree]);
-  hoveredNode = nodes.find(n => Math.hypot(n.x-mx, n.y-my) < 30) || null;
-  renderTree(hoveredNode);
-  treeCanvas.style.cursor = hoveredNode ? 'pointer' : 'default';
-});
-
-treeCanvas.addEventListener('click', e => {
-  if(hoveredNode){
-    document.getElementById('nodeInfo').innerHTML =
-      '<strong style="color:var(--accent)">' + hoveredNode.label + '</strong><br>' + hoveredNode.info;
-  }
-});
-
-function setTree(type) {
-  currentTree = type;
-  document.getElementById('btnNaive').style.opacity = type==='naive' ? '1' : '0.5';
-  document.getElementById('btnOpt').style.opacity   = type==='optimized' ? '1' : '0.5';
-  document.getElementById('nodeInfo').textContent = 'Click any node to see details...';
-  renderTree();
-}
-
-renderTree();
-
-// ═══════════════════════════════════════════
-// ACCORDION
-// ═══════════════════════════════════════════
-function toggleAcc(header) {
-  const item = header.parentElement;
-  item.classList.toggle('open');
-}
-
-// ═══════════════════════════════════════════
-// QUIZ
-// ═══════════════════════════════════════════
-function answer(btn, correct) {
-  const opts = btn.parentElement.querySelectorAll('.quiz-opt');
-  opts.forEach(o => o.disabled = true);
-  btn.classList.add(correct ? 'correct' : 'wrong');
-  if(!correct){
-    opts.forEach(o => { if(o.dataset.correct !== undefined || o.getAttribute('onclick').includes('true')) o.classList.add('correct'); });
-  }
-}
-</script>
+        // Initialize presentation
+        document.addEventListener('DOMContentLoaded', () => {
+            new Presentation();
+        });
+    </script>
 </body>
 </html>
